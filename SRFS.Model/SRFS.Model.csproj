@@ -46,6 +46,10 @@
     <Compile Include="Clusters\ByteArrayCluster.cs" />
     <Compile Include="Clusters\Cluster.cs" />
     <Compile Include="Clusters\ClusterType.cs" />
+    <Compile Include="Clusters\FileCluster.cs" />
+    <Compile Include="Clusters\FileDataCluster.cs" />
+    <Compile Include="Clusters\FileHeaderCluster.cs" />
+    <Compile Include="Clusters\FileSystemCluster.cs" />
     <Compile Include="Clusters\IntArrayCluster.cs" />
     <Compile Include="Clusters\PartitionHeaderCluster.cs" />
     <Compile Include="Configuration.cs" />
@@ -53,6 +57,7 @@
     <Compile Include="CryptoSettings.cs" />
     <Compile Include="Data\ByteArray.cs" />
     <Compile Include="Data\KeyThumbprint.cs" />
+    <Compile Include="Data\PublicKey.cs" />
     <Compile Include="Data\Signature.cs" />
     <Compile Include="LongArrayCluster.cs" />
     <Compile Include="Options.cs" />
