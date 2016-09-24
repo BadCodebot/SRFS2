@@ -44,6 +44,7 @@
     <Compile Include="ByteBlock.cs" />
     <Compile Include="Clusters\Cluster.cs" />
     <Compile Include="Clusters\ClusterType.cs" />
+    <Compile Include="Clusters\PartitionHeaderCluster.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="CryptoSettings.cs" />
