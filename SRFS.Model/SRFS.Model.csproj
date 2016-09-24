@@ -42,8 +42,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ByteBlock.cs" />
+    <Compile Include="Clusters\ArrayCluster.cs" />
+    <Compile Include="Clusters\ByteArrayCluster.cs" />
     <Compile Include="Clusters\Cluster.cs" />
     <Compile Include="Clusters\ClusterType.cs" />
+    <Compile Include="Clusters\IntArrayCluster.cs" />
     <Compile Include="Clusters\PartitionHeaderCluster.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
@@ -51,6 +54,7 @@
     <Compile Include="Data\ByteArray.cs" />
     <Compile Include="Data\KeyThumbprint.cs" />
     <Compile Include="Data\Signature.cs" />
+    <Compile Include="LongArrayCluster.cs" />
     <Compile Include="Options.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
