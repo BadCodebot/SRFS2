@@ -126,7 +126,7 @@ namespace SRFS.Model.Clusters {
         public virtual void Load(IBlockIO io) {
             if (_data.Length % io.BlockSizeBytes != 0) throw new ArgumentException();
 
-            io.Read(PartitionBlockAddress, _data, 0, _data.Length / io.BlockSizeBytes);
+            io.Read(AbsoluteAddress, _data, 0, _data.Length / io.BlockSizeBytes);
             if (!IsMarkerValid()) throw new ArgumentException("Invalid Cluster Marker");
             if (!IsVersionCompatible()) throw new ArgumentException("Unsupported version");
             if (Configuration.Options.VerifyClusterHashes() && !IsHashValid()) throw new IOException("Cluster has invalid hash");
@@ -142,7 +142,7 @@ namespace SRFS.Model.Clusters {
                 UpdateSignature();
                 _byteBlock.IsModified = false;
             }
-            io.Write(PartitionBlockAddress, _data, 0, _data.Length / io.BlockSizeBytes);
+            io.Write(AbsoluteAddress, _data, 0, _data.Length / io.BlockSizeBytes);
         }
 
         #endregion
@@ -150,7 +150,7 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Properties
 
-        protected abstract long PartitionBlockAddress { get; }
+        protected abstract long AbsoluteAddress { get; }
 
         protected virtual ByteBlock Data => _byteBlock;
 
