@@ -21,8 +21,8 @@ namespace SRFS.IO {
         /// </summary>
         int NBlocks { get; }
 
-        void Read(int position, byte[] buffer, int bufferOffset, int blockCount);
+        void Read(long position, byte[] buffer, int bufferOffset, int blockCount);
 
-        void Write(int position, byte[] buffer, int bufferOffset, int blockCount);
+        void Write(long position, byte[] buffer, int bufferOffset, int blockCount);
     }
 }
