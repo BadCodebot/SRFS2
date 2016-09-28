@@ -12,10 +12,9 @@ namespace SRFS.Model {
         // Public
         #region Constructors 
 
-        public ClusterTable(IEnumerable<ArrayCluster<T>> clusters, int nElements, int sizeOfElement) {
+        public ClusterTable(IEnumerable<ArrayCluster<T>> clusters, int sizeOfElement) {
             _clusters = clusters.ToList();
             _sizeOfElement = sizeOfElement;
-            _nElements = nElements;
             _elementsPerCluster = ArrayCluster.CalculateElementCount(sizeOfElement);
 
             _isModified = new List<bool>();
@@ -29,6 +28,12 @@ namespace SRFS.Model {
 
         #endregion
         #region Properties
+
+        public IEnumerable<ArrayCluster<T>> Clusters {
+            get {
+                return _clusters.AsReadOnly();
+            }
+        }
 
         public T this[int index] {
             get {
@@ -90,7 +95,7 @@ namespace SRFS.Model {
         public IEnumerator<T> GetEnumerator() {
             int n = 0;
             for (int i = 0; i < _clusters.Count; i++) {
-                for (int j = 0; j < _elementsPerCluster && n < _nElements; j++, n++) {
+                for (int j = 0; j < _elementsPerCluster && n < Count; j++, n++) {
                     yield return _clusters[i][j];
                 }
             }
@@ -100,13 +105,15 @@ namespace SRFS.Model {
             return GetEnumerator();
         }
 
+        public int Count => _clusters.Count * _elementsPerCluster;
+
         #endregion
 
         // Private
         #region Methods
 
         private (int cluster, int offset) GetIndexLocation(int index) {
-            if (index < 0 || index >= _nElements) throw new ArgumentOutOfRangeException();
+            if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
             return (index / _elementsPerCluster, index % _elementsPerCluster);
         }
 
@@ -117,7 +124,6 @@ namespace SRFS.Model {
         private readonly List<bool> _isModified;
 
         private readonly int _sizeOfElement;
-        private readonly int _nElements;
 
         private readonly int _elementsPerCluster;
 
