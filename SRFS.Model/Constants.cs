@@ -23,5 +23,9 @@ namespace SRFS.Model {
         public static readonly DateTime DefaultWriteTime = DateTime.MinValue;
 
         public const int GuidLength = 16;
+
+        public const int SecurityIdentifierLength = 68;
+
+        public const int MaximumNameLength = 255;
     }
 }
