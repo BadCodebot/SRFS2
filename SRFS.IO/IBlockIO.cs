@@ -16,13 +16,10 @@ namespace SRFS.IO {
         /// </summary>
         int BlockSizeBytes { get; }
 
-        /// <summary>
-        /// The number of blocks available.
-        /// </summary>
-        int NBlocks { get; }
+        long SizeBytes { get; }
 
-        void Read(long position, byte[] buffer, int bufferOffset, int blockCount);
+        void Read(long position, byte[] buffer, int bufferOffset, long bytesToRead);
 
-        void Write(long position, byte[] buffer, int bufferOffset, int blockCount);
+        void Write(long position, byte[] buffer, int bufferOffset, long bytesToWrite);
     }
 }
