@@ -14,12 +14,12 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public PartitionHeaderCluster(int partitionHeaderClusterSize) : base(partitionHeaderClusterSize) {
+        public PartitionHeaderCluster() : base(ClusterSize) {
             Type = ClusterType.PartitionHeader;
             BytesPerCluster = 0;
-            TotalClustersPerTrack = 0;
+            ClustersPerTrack = 0;
             DataClustersPerTrack = 0;
-            TotalTracks = 0;
+            TrackCount = 0;
             VolumeName = string.Empty;
         }
 
@@ -46,7 +46,7 @@ namespace SRFS.Model.Clusters {
             }
         }
 
-        public int TotalClustersPerTrack {
+        public int ClustersPerTrack {
             get {
                 return base.Data.ToInt32(Offset_TotalClustersPerTrack);
             }
@@ -64,7 +64,7 @@ namespace SRFS.Model.Clusters {
             }
         }
 
-        public int TotalTracks {
+        public int TrackCount {
             get {
                 return base.Data.ToInt32(Offset_TotalTracks);
             }
@@ -92,11 +92,12 @@ namespace SRFS.Model.Clusters {
 
         public override void Clear() {
             base.Clear();
-            BytesPerCluster = 0;
-            TotalClustersPerTrack = 0;
-            DataClustersPerTrack = 0;
-            TotalTracks = 0;
-            VolumeName = string.Empty;
+            Type = ClusterType.PartitionHeader;
+            BytesPerCluster = Configuration.Geometry.BytesPerCluster;
+            ClustersPerTrack = Configuration.Geometry.ClustersPerTrack;
+            DataClustersPerTrack = Configuration.Geometry.DataClustersPerTrack;
+            TrackCount = Configuration.Geometry.TrackCount;
+            VolumeName = Configuration.VolumeName;
         }
         #endregion
 
