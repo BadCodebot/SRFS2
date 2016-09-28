@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SRFS.IO;
+﻿using SRFS.IO;
+using System;
 
 namespace SRFS.Model {
 
@@ -20,10 +16,6 @@ namespace SRFS.Model {
             }
         }
 
-        public static bool IsGeometryInitialized => _geometry != null;
-
-        private static Geometry _geometry = null;
-
         public static Guid FileSystemID {
             get {
                 if (!IsFileSystemIDInitialized) throw new InvalidOperationException();
@@ -35,10 +27,6 @@ namespace SRFS.Model {
             }
         }
 
-        public static bool IsFileSystemIDInitialized => _fileSystemID.HasValue;
-
-        private static Guid? _fileSystemID = null;
-
         public static CryptoSettings CryptoSettings {
             get {
                 if (!IsCryptoSettingsInitialized) throw new InvalidOperationException();
@@ -49,11 +37,7 @@ namespace SRFS.Model {
                 _cryptoSettings = value;
             }
         }
-
-        public static bool IsCryptoSettingsInitialized => _cryptoSettings != null;
-
-        private static CryptoSettings _cryptoSettings = null;
-
+        
         public static Options Options {
             get {
                 if (!IsOptionsInitialized) throw new InvalidOperationException();
@@ -65,9 +49,16 @@ namespace SRFS.Model {
             }
         }
 
-        private static bool IsOptionsInitialized => _options.HasValue;
-
-        private static Options? _options = null;
+        public static string VolumeName {
+            get {
+                if (!IsVolumeNameInitialized) throw new InvalidOperationException();
+                return _volumeName;
+            }
+            set {
+                if (IsVolumeNameInitialized) throw new InvalidOperationException();
+                _volumeName = value;
+            }
+        }
 
         public static Partition Partition {
             get {
@@ -80,18 +71,23 @@ namespace SRFS.Model {
             }
         }
 
+        public static bool IsVolumeNameInitialized => _volumeName != null;
+
+        public static bool IsGeometryInitialized => _geometry != null;
+
+        public static bool IsFileSystemIDInitialized => _fileSystemID.HasValue;
+
+        public static bool IsCryptoSettingsInitialized => _cryptoSettings != null;
+
         public static bool IsPartitionInitialized => _partition != null;
 
+        public static bool IsOptionsInitialized => _options.HasValue;
+
         private static Partition _partition = null;
-    }
-
-    public class Geometry {
-
-        public Geometry(int bytesPerCluster) {
-            _bytesPerCluster = bytesPerCluster;
-        }
-
-        public int BytesPerCluster => _bytesPerCluster;
-        private readonly int _bytesPerCluster;
+        private static Options? _options = null;
+        private static CryptoSettings _cryptoSettings = null;
+        private static Guid? _fileSystemID = null;
+        private static Geometry _geometry = null;
+        private static string _volumeName = null;
     }
 }

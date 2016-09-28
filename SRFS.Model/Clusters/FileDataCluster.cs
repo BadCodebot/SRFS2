@@ -5,6 +5,8 @@
         // Public
         #region Constructors
 
+        public static new readonly int HeaderLength = CalculateHeaderLength(0);
+
         public FileDataCluster() : base(0) {
             Type = ClusterType.FileBody;
             _data = new ByteBlock(base.Data, DataOffset, base.Data.Length - DataOffset);

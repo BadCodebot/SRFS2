@@ -9,6 +9,13 @@
 
         #endregion
 
+        public static int ElementsPerCluster {
+            get {
+                if (!_elementsPerCluster.HasValue) _elementsPerCluster = CalculateElementCount(sizeof(int));
+                return _elementsPerCluster.Value;
+            }
+        }
+
         // Protected
         #region Methods
 
@@ -21,5 +28,7 @@
         }
 
         #endregion
+
+        private static int? _elementsPerCluster;
     }
 }
