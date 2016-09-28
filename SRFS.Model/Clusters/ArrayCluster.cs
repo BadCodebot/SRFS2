@@ -26,6 +26,15 @@ namespace SRFS.Model.Clusters {
             }
         }
 
+        public new ClusterType Type {
+            get {
+                return base.Type;
+            }
+            set {
+                base.Type = value;
+            }
+        }
+
         #endregion
         #region Methods
 
