@@ -7,10 +7,13 @@ namespace SRFS.Model.Clusters {
         None = 0,
         PartitionHeader,
         ClusterStateTable,
-        NextClusterTable,
+        NextClusterAddressTable,
         BytesUsedTable,
-        WriteTimeTable,
+        VerifyTimeTable,
         DirectoryTable,
+        FileTable,
+        AccessRulesTable,
+        AuditRulesTable,
         FileHeader,
         FileBody
     }
