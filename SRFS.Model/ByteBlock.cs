@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Security.Principal;
 
 namespace SRFS.Model {
 
@@ -37,6 +38,17 @@ namespace SRFS.Model {
             _isModifed = true;
         }
 
+        public SecurityIdentifier ToSecurityIdentifier(int offset) {
+            if (offset + Constants.SecurityIdentifierLength > _length) throw new ArgumentException();
+            return new SecurityIdentifier(_block, _offset + offset);
+        }
+
+        public void Set(int offset, SecurityIdentifier id) {
+            if (offset + Constants.SecurityIdentifierLength > _length) throw new ArgumentException();
+            id.GetBinaryForm(_block, _offset + offset);
+            Array.Clear(_block,  _offset + offset + id.BinaryLength, Constants.SecurityIdentifierLength - id.BinaryLength);
+        }
+
         public byte[] ToByteArray(int offset, int length) {
             if (offset + length > _length) throw new ArgumentException();
             byte[] r = new byte[length];
@@ -57,6 +69,15 @@ namespace SRFS.Model {
             if (offset < 0 || offset > _length) throw new ArgumentOutOfRangeException(nameof(offset));
             if (offset + sizeof(int) > _length) throw new ArgumentException();
             Buffer.BlockCopy(BitConverter.GetBytes(s), 0, _block, _offset + offset, sizeof(int));
+            _isModifed = true;
+        }
+
+        public bool ToBoolean(int offset) => BitConverter.ToBoolean(_block, offset + _offset);
+
+        public void Set(int offset, bool s) {
+            if (offset < 0 || offset > _length) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset + sizeof(bool) > _length) throw new ArgumentException();
+            Buffer.BlockCopy(BitConverter.GetBytes(s), 0, _block, _offset + offset, sizeof(bool));
             _isModifed = true;
         }
 
