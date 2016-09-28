@@ -6,12 +6,12 @@ namespace SRFS.IO {
 
         #region Construction / Destruction
 
-        public SuperBlockIO(IBlockIO blockReaderWriter, int blocksPerSuperBlock, int skip = 0, bool shouldDisposeBlockReaderWriter = false) {
+        public SuperBlockIO(IBlockIO blockReaderWriter, int blockSizeBytes, int skipBytes = 0, bool shouldDisposeBlockReaderWriter = false) {
             _isDisposed = false;
             _blockReaderWriter = blockReaderWriter;
-            _blocksPerSuperBlock = blocksPerSuperBlock;
+            _blockSizeBytes = blockSizeBytes;
             _shouldDisposeBlockReaderWriter = shouldDisposeBlockReaderWriter;
-            _skip = skip;
+            _skipBytes = skipBytes;
         }
 
         protected virtual void Dispose(bool disposing) {
@@ -31,24 +31,25 @@ namespace SRFS.IO {
         #region Properties
 
         /// <inheritdoc />
-        public int BlockSizeBytes => _blocksPerSuperBlock * _blockReaderWriter.BlockSizeBytes;
+        public int BlockSizeBytes => _blockSizeBytes;
+        private int _blockSizeBytes;
 
         /// <inheritdoc />
-        public int NBlocks => (_blockReaderWriter.NBlocks - _skip) / _blocksPerSuperBlock;
+        public long SizeBytes => _blockReaderWriter.SizeBytes;
 
         #endregion
         #region Methods
 
         /// <inheritdoc />
-        public void Read(long position, byte[] buffer, int bufferOffset, int blockCount) {
-            if (position + blockCount > NBlocks) throw new System.IO.IOException();
-            _blockReaderWriter.Read(position * _blocksPerSuperBlock + _skip, buffer, bufferOffset, blockCount * _blocksPerSuperBlock);
+        public void Read(long position, byte[] buffer, int bufferOffset, long bytesToRead) {
+            if (position + bytesToRead > SizeBytes) throw new System.IO.IOException();
+            _blockReaderWriter.Read(position + _skipBytes, buffer, bufferOffset, bytesToRead);
         }
 
         /// <inheritdoc />
-        public void Write(long position, byte[] buffer, int bufferOffset, int blockCount) {
-            if (position + blockCount > NBlocks) throw new System.IO.IOException();
-            _blockReaderWriter.Write(position * _blocksPerSuperBlock + _skip, buffer, bufferOffset, blockCount * _blocksPerSuperBlock);
+        public void Write(long position, byte[] buffer, int bufferOffset, long bytesToWrite) {
+            if (position + bytesToWrite > SizeBytes) throw new System.IO.IOException();
+            _blockReaderWriter.Write(position + _skipBytes, buffer, bufferOffset, bytesToWrite);
         }
 
         #endregion
@@ -57,7 +58,7 @@ namespace SRFS.IO {
         private bool _isDisposed;
         private IBlockIO _blockReaderWriter;
         private int _blocksPerSuperBlock;
-        private int _skip;
+        private int _skipBytes;
         private bool _shouldDisposeBlockReaderWriter;
 
         #endregion
