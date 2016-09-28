@@ -5,10 +5,10 @@ namespace SRFS.Model.Clusters {
 
     public class FileHeaderCluster : FileCluster {
 
+        public static new readonly int HeaderLength = CalculateHeaderLength(Offset_Data);
+
         // Public
         #region Fields
-
-        public static readonly new int HeaderLength = FileSystemCluster.HeaderLength + Offset_Data;
 
         public const int MaximumNameLength = 255;
 
@@ -82,7 +82,7 @@ namespace SRFS.Model.Clusters {
         private static readonly int Offset_NameLength = Offset_ParentID + Length_ParentID;
         private static readonly int Length_NameLength = sizeof(byte);
 
-        private static readonly int Offset_Name = Offset_NameLength + sizeof(byte);
+        private static readonly int Offset_Name = Offset_NameLength + Length_NameLength;
         private static readonly int Length_Name = MaximumNameLength * sizeof(char);
 
         private static readonly int Offset_Data = Offset_Name + Length_Name;
