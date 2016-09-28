@@ -52,7 +52,7 @@ namespace SRFS.IO {
         public int BlockSizeBytes => (int)_partition.Drive.BytesPerSector;
 
         /// <inheritdoc />
-        public int NBlocks => (int)(_partition.SizeBytes / BlockSizeBytes);
+        public long SizeBytes => _partition.SizeBytes;
 
         private void setPosition(long position) {
             if (!Kernel32.SetFilePointerEx(_handle, _partition.StartingOffset + position, null, Kernel32.EMoveMethod.Begin)) {
@@ -61,7 +61,7 @@ namespace SRFS.IO {
         }
 
         /// <inheritdoc />
-        public void Read(long position, byte[] buffer, int offset, int bytesToRead) {
+        public void Read(long position, byte[] buffer, int offset, long bytesToRead) {
             if (bytesToRead < 0) throw new ArgumentOutOfRangeException(nameof(bytesToRead));
             uint bytesToReadUInt = (uint)bytesToRead;
 
@@ -82,7 +82,7 @@ namespace SRFS.IO {
         }
 
         /// <inheritdoc />
-        public void Write(long position, byte[] buffer, int offset, int bytesToWrite) {
+        public void Write(long position, byte[] buffer, int offset, long bytesToWrite) {
             if (bytesToWrite < 0) throw new ArgumentOutOfRangeException(nameof(bytesToWrite));
             uint bytesToWriteUInt = (uint)bytesToWrite;
 
