@@ -53,6 +53,13 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Constructors
 
+        public static int CalculateHeaderLength(int additionalHeaderLength) {
+            int header = FileSystemCluster.HeaderLength + additionalHeaderLength + Length_KeyThumbprint + Length_PublicKey;
+            int availableDataSize = Configuration.Geometry.BytesPerCluster - header;
+            int paddingLength = availableDataSize % 16;
+            return header + paddingLength;
+        }
+
         protected FileCluster(int offset) : base() {
             _keyThumbprintOffset = offset;
             _publicKeyOffset = _keyThumbprintOffset + Length_KeyThumbprint;
