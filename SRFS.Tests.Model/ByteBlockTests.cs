@@ -6,7 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace SRFS.Model.Tests {
+namespace SRFS.Tests.Model {
 
     [TestClass]
     public class ByteBlockTests {

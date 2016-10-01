@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("SRFS.Model.Tests")]
+[assembly: AssemblyTitle("SRFS.Tests.Model")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("SRFS.Model.Tests")]
+[assembly: AssemblyProduct("SRFS.Tests.Model")]
 [assembly: AssemblyCopyright("Copyright ©  2016")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("e3f7f190-fdbb-4854-a11e-1917f6f956a6")]
+[assembly: Guid("443cd6ae-eee7-451a-a5b5-684f9c0bccc1")]
 
 // Version information for an assembly consists of the following four values:
 //
