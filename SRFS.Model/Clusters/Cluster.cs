@@ -131,16 +131,16 @@ namespace SRFS.Model.Clusters {
             if (!IsVersionCompatible()) throw new ArgumentException("Unsupported version");
             if (Configuration.Options.VerifyClusterHashes() && !IsHashValid()) throw new IOException("Cluster has invalid hash");
             if (Configuration.Options.VerifyClusterSignatures() && !IsSignatureValid()) throw new IOException("Cluster has invalid signature");
-            _byteBlock.IsModified = false;
+            IsModified = false;
         }
 
         public virtual void Save(IBlockIO io) {
             if (_data.Length % io.BlockSizeBytes != 0) throw new ArgumentException();
 
-            if (_byteBlock.IsModified) {
+            if (IsModified) {
                 UpdateHash();
                 UpdateSignature();
-                _byteBlock.IsModified = false;
+                IsModified = false;
             }
             io.Write(AbsoluteAddress, _data, 0, _data.Length / io.BlockSizeBytes);
         }
@@ -153,6 +153,11 @@ namespace SRFS.Model.Clusters {
         protected abstract long AbsoluteAddress { get; }
 
         protected virtual ByteBlock Data => _byteBlock;
+
+        protected bool IsModified {
+            get { return _isModified; }
+            set { _isModified = value; }
+        }
 
         #endregion
 
@@ -194,6 +199,7 @@ namespace SRFS.Model.Clusters {
         private ByteBlock _byteBlock;
 
         private int _clusterSize;
+        private bool _isModified;
 
         #endregion
     }
