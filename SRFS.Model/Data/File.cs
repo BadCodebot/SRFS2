@@ -1,15 +1,21 @@
-﻿using System;
+﻿using SRFS.Model.Clusters;
+using System;
 
 namespace SRFS.Model.Data {
 
-    public sealed class FileEntry : FileSystemEntry, IEquatable<FileEntry> {
+    public sealed class File : FileSystemObject, IEquatable<File> {
 
-        public FileEntry(int id, string name) : base(id, name) {
+        public const int StorageLength = FileSystemEntryStorageLength + sizeof(long) + sizeof(int);
+
+        public static ObjectArrayCluster<File> CreateArrayCluster(int address) => new ObjectArrayCluster<File>(ClusterType.FileTable,
+            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new File(block, offset)) { Address = address };
+
+        public File(int id, string name) : base(id, name) {
             _length = 0;
             _firstCluster = Constants.NoAddress;
         }
 
-        public FileEntry(ByteBlock byteBlock, int offset) : base(byteBlock, offset) {
+        public File(ByteBlock byteBlock, int offset) : base(byteBlock, offset) {
             offset += FileSystemEntryStorageLength;
 
             _length = byteBlock.ToInt64(offset);
@@ -19,7 +25,7 @@ namespace SRFS.Model.Data {
         }
 
         public override bool Equals(object obj) {
-            if (obj is FileEntry) return Equals((FileEntry)obj);
+            if (obj is File) return Equals((File)obj);
             return false;
         }
 
@@ -27,7 +33,7 @@ namespace SRFS.Model.Data {
             return ID.GetHashCode();
         }
 
-        public bool Equals(FileEntry other) {
+        public bool Equals(File other) {
             return base.Equals(other) &&
                 _length == other._length &&
                 _firstCluster == other._firstCluster;
@@ -65,17 +71,6 @@ namespace SRFS.Model.Data {
 
         private long _length;
         private int _firstCluster;
-    }
 
-    public static class FileEntryExtensions {
-
-        public static void Set(this ByteBlock byteBlock, int offset, FileEntry entry) {
-            if (entry == null) throw new ArgumentNullException(nameof(entry));
-            entry.Save(byteBlock, offset);
-        }
-
-        public static FileEntry ToFileEntry(this ByteBlock byteBlock, int offset) {
-            return new FileEntry(byteBlock, offset);
-        }
     }
 }
