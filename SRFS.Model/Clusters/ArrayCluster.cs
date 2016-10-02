@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace SRFS.Model.Clusters {
 
@@ -7,7 +9,12 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Fields
 
-        public static readonly new int HeaderLength = Cluster.HeaderLength + Offset_Data;
+        public static new int HeaderLength => _headerLength;
+        private static readonly int _headerLength;
+
+        static ArrayCluster() {
+            _headerLength = Cluster.HeaderLength + Offset_Data;
+        }
 
         #endregion
         #region Properties
@@ -23,15 +30,7 @@ namespace SRFS.Model.Clusters {
             }
             set {
                 base.Data.Set(Offset_NextCluster, value);
-            }
-        }
-
-        public new ClusterType Type {
-            get {
-                return base.Type;
-            }
-            set {
-                base.Type = value;
+                IsModified = true;
             }
         }
 
@@ -63,7 +62,7 @@ namespace SRFS.Model.Clusters {
 
         protected override long AbsoluteAddress {
             get {
-                return _address == Constants.NoAddress ? Constants.NoAddress : PartitionHeaderCluster.ClusterSize + _address * Configuration.Geometry.BytesPerCluster;
+                return _address == Constants.NoAddress ? Constants.NoAddress : _address * Configuration.Geometry.BytesPerCluster;
             }
         }
 
@@ -86,7 +85,7 @@ namespace SRFS.Model.Clusters {
         #endregion
     }
 
-    public abstract class ArrayCluster<T> : ArrayCluster {
+    public abstract class ArrayCluster<T> : ArrayCluster, IEnumerable<T> {
 
         // Public
         #region Properties
@@ -99,6 +98,7 @@ namespace SRFS.Model.Clusters {
             set {
                 if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
                 WriteElement(value, base.Data, index * _elementSize);
+                IsModified = true;
             }
         }
 
@@ -120,6 +120,14 @@ namespace SRFS.Model.Clusters {
         protected abstract void WriteElement(T value, ByteBlock byteBlock, int offset);
 
         protected abstract T ReadElement(ByteBlock byteBlock, int offset);
+
+        public IEnumerator<T> GetEnumerator() {
+            for (int i = 0; i < _count; i++) yield return this[i];
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() {
+            return GetEnumerator();
+        }
 
         #endregion
 
