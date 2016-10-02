@@ -5,29 +5,43 @@ using System.Security.Principal;
 
 namespace SRFS.Model {
 
-    public class ByteBlock {
+    public delegate void ChangedEventHandler(object sender);
 
-        public ByteBlock(byte[] block) {
+    public interface INotifyChanged {
+        event ChangedEventHandler Changed;
+    }
+
+    public class DataBlock : INotifyChanged {
+
+        public event ChangedEventHandler Changed;
+
+        public DataBlock(byte[] block) {
             _block = block;
             _offset = 0;
             _length = block.Length;
         }
 
-        public ByteBlock(byte[] block, int offset, int length) {
+        public DataBlock(byte[] block, int offset, int length) {
             _block = block;
             _offset = offset;
             _length = length;
         }
 
-        public ByteBlock(ByteBlock block, int offset) {
+        private void notifyChanged() {
+            Changed?.Invoke(this);
+            _parent?.notifyChanged();
+        }
+
+        public DataBlock(DataBlock block, int offset) {
             if (offset < 0 || offset > block.Length) throw new ArgumentOutOfRangeException(nameof(offset));
 
             _block = block._block;
             _offset = block._offset + offset;
             _length = block.Length - offset;
+            _parent = block;
         }
 
-        public ByteBlock(ByteBlock block, int offset, int length) {
+        public DataBlock(DataBlock block, int offset, int length) {
             if (offset < 0 || offset > block.Length) throw new ArgumentOutOfRangeException(nameof(offset));
             if (length < 0 || length > block.Length) throw new ArgumentOutOfRangeException(nameof(offset));
             if (offset + length > block.Length) throw new ArgumentException();
@@ -35,12 +49,14 @@ namespace SRFS.Model {
             _block = block._block;
             _offset = block._offset + offset;
             _length = length;
+            _parent = block;
         }
 
         public byte ToByte(int offset) => _block[_offset + offset];
 
         public void Set(int offset, byte b) {
             _block[_offset + offset] = b;
+            notifyChanged();
         }
 
         public SecurityIdentifier ToSecurityIdentifier(int offset) {
@@ -52,6 +68,7 @@ namespace SRFS.Model {
             if (offset + Constants.SecurityIdentifierLength > _length) throw new ArgumentException();
             id.GetBinaryForm(_block, _offset + offset);
             Array.Clear(_block, _offset + offset + id.BinaryLength, Constants.SecurityIdentifierLength - id.BinaryLength);
+            notifyChanged();
         }
 
         public byte[] ToByteArray(int offset, int length) {
@@ -64,6 +81,7 @@ namespace SRFS.Model {
         public void Set(int offset, byte[] b) {
             if (offset + b.Length > _length) throw new ArgumentException();
             Buffer.BlockCopy(b, 0, _block, _offset + offset, b.Length);
+            notifyChanged();
         }
 
 
@@ -73,6 +91,7 @@ namespace SRFS.Model {
             if (offset < 0 || offset > _length) throw new ArgumentOutOfRangeException(nameof(offset));
             if (offset + sizeof(int) > _length) throw new ArgumentException();
             Buffer.BlockCopy(BitConverter.GetBytes(s), 0, _block, _offset + offset, sizeof(int));
+            notifyChanged();
         }
 
         public bool ToBoolean(int offset) => BitConverter.ToBoolean(_block, offset + _offset);
@@ -81,6 +100,7 @@ namespace SRFS.Model {
             if (offset < 0 || offset > _length) throw new ArgumentOutOfRangeException(nameof(offset));
             if (offset + sizeof(bool) > _length) throw new ArgumentException();
             Buffer.BlockCopy(BitConverter.GetBytes(s), 0, _block, _offset + offset, sizeof(bool));
+            notifyChanged();
         }
 
         public long ToInt64(int offset) => BitConverter.ToInt64(_block, offset + _offset);
@@ -89,6 +109,7 @@ namespace SRFS.Model {
             if (offset < 0 || offset > _length) throw new ArgumentOutOfRangeException(nameof(offset));
             if (offset + sizeof(long) > _length) throw new ArgumentException();
             Buffer.BlockCopy(BitConverter.GetBytes(s), 0, _block, _offset + offset, sizeof(long));
+            notifyChanged();
         }
 
         public string ToString(int offset, int lengthChars) {
@@ -99,6 +120,7 @@ namespace SRFS.Model {
             if (s.Length == 0) return;
             char[] chars = s.ToCharArray();
             Encoding.Unicode.GetBytes(chars, 0, chars.Length, _block, _offset + offset);
+            notifyChanged();
         }
 
         public void Clear(int offset, int length) {
@@ -109,8 +131,10 @@ namespace SRFS.Model {
             if (length == 0) return;
 
             Array.Clear(_block, _offset + offset, length);
+            notifyChanged();
         }
 
+        private DataBlock _parent = null;
         private byte[] _block;
         private int _offset;
 
@@ -136,8 +160,8 @@ namespace SRFS.Model {
 
     public static class ByteBlockExtensions {
 
-        public static byte[] TransformFinalBlock(this HashAlgorithm t, ByteBlock b, int offset, int length) => b.TransformFinalBlock(t, offset, length);
+        public static byte[] TransformFinalBlock(this HashAlgorithm t, DataBlock b, int offset, int length) => b.TransformFinalBlock(t, offset, length);
 
-        public static byte[] TransformFinalBlock(this ICryptoTransform t, ByteBlock b, int offset, int length) => b.TransformFinalBlock(t, offset, length);
+        public static byte[] TransformFinalBlock(this ICryptoTransform t, DataBlock b, int offset, int length) => b.TransformFinalBlock(t, offset, length);
     }
 }
