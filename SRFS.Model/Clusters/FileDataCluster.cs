@@ -5,11 +5,15 @@
         // Public
         #region Constructors
 
-        public static new readonly int HeaderLength = CalculateHeaderLength(0);
+        public static new int HeaderLength => _headerLength;
+        private static readonly int _headerLength;
+
+        static FileDataCluster() {
+            _headerLength = CalculateHeaderLength(0);
+        }
 
         public FileDataCluster() : base(0) {
-            Type = ClusterType.FileBody;
-            _data = new ByteBlock(base.Data, DataOffset, base.Data.Length - DataOffset);
+            Type = ClusterType.FileData;
         }
 
         #endregion
@@ -17,7 +21,7 @@
 
         public override void Clear() {
             base.Clear();
-            Type = ClusterType.FileBody;
+            Type = ClusterType.FileData;
         }
 
         #endregion
@@ -25,18 +29,13 @@
         // Protected
         #region Properties
 
-        protected override ByteBlock Data {
-            get {
-                return _data;
-            }
-        }
+        public static int DataSize => Configuration.Geometry.BytesPerCluster - _headerLength;
+
 
         #endregion
 
         // Private
         #region Fields
-
-        private ByteBlock _data;
 
         #endregion
     }

@@ -5,7 +5,12 @@ namespace SRFS.Model.Clusters {
 
     public class FileHeaderCluster : FileCluster {
 
-        public static new readonly int HeaderLength = CalculateHeaderLength(Offset_Data);
+        public static new int HeaderLength => _headerLength;
+        private static readonly int _headerLength;
+
+        static FileHeaderCluster() {
+            _headerLength = CalculateHeaderLength(Offset_Data);
+        }
 
         // Public
         #region Fields
@@ -15,36 +20,37 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public FileHeaderCluster() : base(Offset_Name + MaximumNameLength * sizeof(char)) {
+        public FileHeaderCluster() : base(Offset_Data) {
             ParentID = Constants.NoID;
             Name = string.Empty;
             Type = ClusterType.FileHeader;
-            _data = new ByteBlock(base.Data, DataOffset, base.Data.Length - DataOffset);
         }
 
         #endregion
         #region Properties
 
+        public static int DataSize => Configuration.Geometry.BytesPerCluster - _headerLength;
+
         public int ParentID {
             get {
-                return base.Data.ToInt32(Offset_ParentID);
+                return base.OpenBlock.ToInt32(Offset_ParentID);
             }
             set {
-                base.Data.Set(Offset_ParentID, value);
+                base.OpenBlock.Set(Offset_ParentID, value);
             }
         }
 
         public string Name {
             get {
-                return base.Data.ToString(Offset_Name, base.Data.ToByte(Offset_NameLength));
+                return base.OpenBlock.ToString(Offset_Name, base.OpenBlock.ToByte(Offset_NameLength));
             }
             set {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length > MaximumNameLength) throw new ArgumentException();
 
-                base.Data.Set(Offset_NameLength, (byte)value.Length);
-                base.Data.Set(Offset_Name, value);
-                base.Data.Clear(Offset_Name + value.Length * sizeof(char), (MaximumNameLength - value.Length) * sizeof(char));
+                base.OpenBlock.Set(Offset_NameLength, (byte)value.Length);
+                base.OpenBlock.Set(Offset_Name, value);
+                base.OpenBlock.Clear(Offset_Name + value.Length * sizeof(char), (MaximumNameLength - value.Length) * sizeof(char));
             }
         }
 
@@ -63,18 +69,10 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Properties
 
-        protected override ByteBlock Data {
-            get {
-                return _data;
-            }
-        }
-
         #endregion
 
         // Private
         #region Fields
-
-        private ByteBlock _data;
 
         private static readonly int Offset_ParentID = 0;
         private static readonly int Length_ParentID = sizeof(int);
