@@ -5,7 +5,9 @@
         // Public
         #region Constructors
 
-        public ClusterStatesCluster() : base(sizeof(ClusterState)) { }
+        public ClusterStatesCluster() : base(sizeof(ClusterState)) {
+            Type = ClusterType.ClusterStateTable;
+        }
 
         #endregion
 

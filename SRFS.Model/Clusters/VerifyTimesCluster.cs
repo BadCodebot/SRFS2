@@ -7,7 +7,9 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Constructors
 
-        public VerifyTimesCluster() : base(sizeof(long)) { }
+        public VerifyTimesCluster() : base(sizeof(long)) {
+            Type = ClusterType.VerifyTimeTable;
+        }
 
         #endregion
 
