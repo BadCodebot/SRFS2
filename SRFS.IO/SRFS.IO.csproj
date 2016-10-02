@@ -46,6 +46,7 @@
     <Compile Include="Drive.cs" />
     <Compile Include="IBlockIO.cs" />
     <Compile Include="Partition.cs" />
+    <Compile Include="MemoryIO.cs" />
     <Compile Include="PartitionIO.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SuperBlockIO.cs" />
