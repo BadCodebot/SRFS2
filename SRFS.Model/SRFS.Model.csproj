@@ -55,9 +55,7 @@
   <ItemGroup>
     <Compile Include="ByteBlock.cs" />
     <Compile Include="ClusterState.cs" />
-    <Compile Include="Clusters\FileEntryCluster.cs" />
-    <Compile Include="Clusters\DirectoryEntryCluster.cs" />
-    <Compile Include="Clusters\AuditRuleCluster.cs" />
+    <Compile Include="Clusters\ObjectArrayCluster.cs" />
     <Compile Include="Clusters\ArrayCluster.cs" />
     <Compile Include="Clusters\ClusterStatesCluster.cs" />
     <Compile Include="Clusters\Cluster.cs" />
@@ -66,7 +64,6 @@
     <Compile Include="Clusters\FileDataCluster.cs" />
     <Compile Include="Clusters\FileHeaderCluster.cs" />
     <Compile Include="Clusters\FileSystemCluster.cs" />
-    <Compile Include="Clusters\AccessRuleCluster.cs" />
     <Compile Include="Clusters\VerifyTimesCluster.cs" />
     <Compile Include="Clusters\IntArrayCluster.cs" />
     <Compile Include="Clusters\PartitionHeaderCluster.cs" />
@@ -75,11 +72,11 @@
     <Compile Include="Constants.cs" />
     <Compile Include="CryptoSettings.cs" />
     <Compile Include="Data\ByteArray.cs" />
-    <Compile Include="Data\FileSystemEntry.cs" />
-    <Compile Include="Data\FileEntry.cs" />
-    <Compile Include="Data\DirectoryEntry.cs" />
-    <Compile Include="Data\FileSystemAuditRuleData.cs" />
-    <Compile Include="Data\FileSystemAccessRuleData.cs" />
+    <Compile Include="Data\FileSystemObject.cs" />
+    <Compile Include="Data\File.cs" />
+    <Compile Include="Data\Directory.cs" />
+    <Compile Include="Data\SrfsAuditRule.cs" />
+    <Compile Include="Data\SrfsAccessRule.cs" />
     <Compile Include="Data\FileSystemObjectType.cs" />
     <Compile Include="Data\KeyThumbprint.cs" />
     <Compile Include="Data\PublicKey.cs" />
