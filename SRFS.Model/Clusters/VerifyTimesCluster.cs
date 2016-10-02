@@ -23,11 +23,11 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Methods
 
-        protected override void WriteElement(DateTime value, ByteBlock byteBlock, int offset) {
+        protected override void WriteElement(DateTime value, DataBlock byteBlock, int offset) {
             byteBlock.Set(offset, value.Ticks);
         }
 
-        protected override DateTime ReadElement(ByteBlock byteBlock, int offset) {
+        protected override DateTime ReadElement(DataBlock byteBlock, int offset) {
             return new DateTime(byteBlock.ToInt64(offset));
         }
 

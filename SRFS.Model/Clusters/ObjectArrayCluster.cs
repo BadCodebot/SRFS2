@@ -12,8 +12,8 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Constructors
 
-        public ObjectArrayCluster(ClusterType type, int elementLength, Action<ByteBlock,int, T> saveDelegate,
-            Func<ByteBlock,int,T> loadDelegate) : base(elementLength + sizeof(bool)) {
+        public ObjectArrayCluster(ClusterType type, int elementLength, Action<DataBlock,int, T> saveDelegate,
+            Func<DataBlock,int,T> loadDelegate) : base(elementLength + sizeof(bool)) {
             Type = type;
             _saveDelegate = saveDelegate;
             _loadDelegate = loadDelegate;
@@ -25,7 +25,7 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Methods
 
-        protected override void WriteElement(T value, ByteBlock byteBlock, int offset) {
+        protected override void WriteElement(T value, DataBlock byteBlock, int offset) {
             if (value == null) {
                 byteBlock.Set(offset, false);
                 offset += sizeof(bool);
@@ -39,7 +39,7 @@ namespace SRFS.Model.Clusters {
             }
         }
 
-        protected override T ReadElement(ByteBlock byteBlock, int offset) {
+        protected override T ReadElement(DataBlock byteBlock, int offset) {
             if (!byteBlock.ToBoolean(offset)) return null;
             offset += sizeof(bool);
 
@@ -49,7 +49,7 @@ namespace SRFS.Model.Clusters {
         #endregion
 
         private int _elementLength;
-        private Action<ByteBlock, int, T> _saveDelegate;
-        private Func<ByteBlock, int, T> _loadDelegate;
+        private Action<DataBlock, int, T> _saveDelegate;
+        private Func<DataBlock, int, T> _loadDelegate;
     }
 }

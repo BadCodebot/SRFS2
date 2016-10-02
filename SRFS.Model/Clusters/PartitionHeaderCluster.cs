@@ -39,51 +39,51 @@ namespace SRFS.Model.Clusters {
 
         public int BytesPerCluster {
             get {
-                return base.Data.ToInt32(Offset_BytesPerCluster);
+                return base.OpenBlock.ToInt32(Offset_BytesPerCluster);
             }
             set {
-                base.Data.Set(Offset_BytesPerCluster, value);
+                base.OpenBlock.Set(Offset_BytesPerCluster, value);
             }
         }
 
         public int ClustersPerTrack {
             get {
-                return base.Data.ToInt32(Offset_TotalClustersPerTrack);
+                return base.OpenBlock.ToInt32(Offset_TotalClustersPerTrack);
             }
             set {
-                base.Data.Set(Offset_TotalClustersPerTrack, value);
+                base.OpenBlock.Set(Offset_TotalClustersPerTrack, value);
             }
         }
 
         public int DataClustersPerTrack {
             get {
-                return base.Data.ToInt32(Offset_DataClustersPerTrack);
+                return base.OpenBlock.ToInt32(Offset_DataClustersPerTrack);
             }
             set {
-                base.Data.Set(Offset_DataClustersPerTrack, value);
+                base.OpenBlock.Set(Offset_DataClustersPerTrack, value);
             }
         }
 
         public int TrackCount {
             get {
-                return base.Data.ToInt32(Offset_TotalTracks);
+                return base.OpenBlock.ToInt32(Offset_TotalTracks);
             }
             set {
-                base.Data.Set(Offset_TotalTracks, value);
+                base.OpenBlock.Set(Offset_TotalTracks, value);
             }
         }
 
         public string VolumeName {
             get {
-                return base.Data.ToString(Offset_Name, base.Data.ToByte(Offset_NameLength));
+                return base.OpenBlock.ToString(Offset_Name, base.OpenBlock.ToByte(Offset_NameLength));
             }
             set {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length > MaximumNameLength) throw new ArgumentException();
 
-                base.Data.Set(Offset_NameLength, (byte)value.Length);
-                base.Data.Set(Offset_Name, value);
-                base.Data.Clear(Offset_Name + value.Length * sizeof(char), (MaximumNameLength - value.Length) * sizeof(char));
+                base.OpenBlock.Set(Offset_NameLength, (byte)value.Length);
+                base.OpenBlock.Set(Offset_Name, value);
+                base.OpenBlock.Clear(Offset_Name + value.Length * sizeof(char), (MaximumNameLength - value.Length) * sizeof(char));
             }
         }
 

@@ -7,13 +7,18 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Fields
 
-        public static readonly new int HeaderLength = Cluster.HeaderLength + Offset_Data;
+        public static new int HeaderLength => _headerLength;
+        private static readonly int _headerLength;
+
+        static FileSystemCluster() {
+            _headerLength = Cluster.HeaderLength + Offset_Data;
+        }
 
         #endregion
         #region Constructors
 
         public FileSystemCluster() : base(Configuration.Geometry.BytesPerCluster) {
-            _data = new ByteBlock(base.Data, Offset_Data, base.Data.Length - Offset_Data);
+            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
             _address = Constants.NoAddress;
 
             FileID = Constants.NoID;
@@ -29,28 +34,48 @@ namespace SRFS.Model.Clusters {
         /// A unique ID number that remains constant throughout the life of the file.
         /// </summary>
         public int FileID {
-            get { return base.Data.ToInt32(Offset_FileID); }
-            set { base.Data.Set(Offset_FileID, value); }
+            get {
+                return base.OpenBlock.ToInt32(Offset_FileID);
+            }
+            set {
+                base.OpenBlock.Set(Offset_FileID, value);
+            }
         }
 
         public int NextClusterAddress {
-            get { return base.Data.ToInt32(Offset_NextClusterAddress); }
-            set { base.Data.Set(Offset_NextClusterAddress, value); }
+            get {
+                return base.OpenBlock.ToInt32(Offset_NextClusterAddress);
+            }
+            set {
+                base.OpenBlock.Set(Offset_NextClusterAddress, value);
+            }
         }
 
         public int BytesUsed {
-            get { return base.Data.ToInt32(Offset_BytesUsed); }
-            set { base.Data.Set(Offset_BytesUsed, value); }
+            get {
+                return base.OpenBlock.ToInt32(Offset_BytesUsed);
+            }
+            set {
+                base.OpenBlock.Set(Offset_BytesUsed, value);
+            }
         }
 
         public DateTime WriteTime {
-            get { return new DateTime(base.Data.ToInt64(Offset_WriteTime)); }
-            set { base.Data.Set(Offset_WriteTime, value.Ticks); }
+            get {
+                return new DateTime(base.OpenBlock.ToInt64(Offset_WriteTime));
+            }
+            set {
+                base.OpenBlock.Set(Offset_WriteTime, value.Ticks);
+            }
         }
 
         public int Address {
-            get { return _address; }
-            set { _address = value; }
+            get {
+                return _address;
+            }
+            set {
+                _address = value;
+            }
         }
 
         #endregion
@@ -71,11 +96,11 @@ namespace SRFS.Model.Clusters {
 
         protected override long AbsoluteAddress {
             get {
-                return _address == Constants.NoAddress ? Constants.NoAddress : PartitionHeaderCluster.ClusterSize + _address * Configuration.Geometry.BytesPerCluster;
+                return _address == Constants.NoAddress ? Constants.NoAddress : _address * Configuration.Geometry.BytesPerCluster;
             }
         }
 
-        protected override ByteBlock Data => _data;
+        protected override DataBlock OpenBlock => _data;
 
         #endregion
 
@@ -96,7 +121,7 @@ namespace SRFS.Model.Clusters {
 
         private static readonly int Offset_Data = Offset_WriteTime + Length_WriteTime;
 
-        private ByteBlock _data;
+        private DataBlock _data;
 
         private int _address;
 
