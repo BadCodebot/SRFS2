@@ -13,7 +13,12 @@ namespace SRFS.Model.Clusters {
 
         public const string HashAlgorithm = "SHA256";
 
-        public static readonly int HeaderLength = Offset_ClusterType + Length_ClusterType;
+        public static int HeaderLength => _headerLength;
+        private static readonly int _headerLength;
+        
+        static Cluster() {
+            _headerLength = Offset_ClusterType + Length_ClusterType;
+        }
 
         #endregion
         #region Constructors
@@ -43,6 +48,7 @@ namespace SRFS.Model.Clusters {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length != Length_Marker) throw new ArgumentException();
                 Buffer.BlockCopy(value, 0, _data, Offset_Marker, Length_Marker);
+                IsModified = true;
             }
         }
 
@@ -56,6 +62,7 @@ namespace SRFS.Model.Clusters {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length != Length_Version) throw new ArgumentException();
                 Buffer.BlockCopy(value, 0, _data, Offset_Version, Length_Version);
+                IsModified = true;
             }
         }
 
@@ -68,6 +75,7 @@ namespace SRFS.Model.Clusters {
             set {
                 if (value == null) throw new ArgumentNullException();
                 Buffer.BlockCopy(value.ToByteArray(), 0, _data, Offset_ID, Constants.GuidLength);
+                IsModified = true;
             }
         }
 
@@ -77,6 +85,7 @@ namespace SRFS.Model.Clusters {
             }
             protected set {
                 _data[Offset_ClusterType] = (byte)value;
+                IsModified = true;
             }
         }
 
@@ -89,6 +98,7 @@ namespace SRFS.Model.Clusters {
             Version = Constants.CurrentVersion;
             ID = Configuration.FileSystemID;
             Type = ClusterType.None;
+            IsModified = true;
         }
 
         public bool IsMarkerValid() {
@@ -106,6 +116,7 @@ namespace SRFS.Model.Clusters {
             for (int i = 0; i < Length_Hash; i++) if (hash[i] != _data[Offset_Hash + i]) return false;
             return true;
         }
+
 
         public bool IsSignatureValid() {
             return new Signature(_data, Offset_Signature).Verify(_data, Offset_SignatureThumbprint, _data.Length - Offset_SignatureThumbprint,
@@ -126,7 +137,7 @@ namespace SRFS.Model.Clusters {
         public virtual void Load(IBlockIO io) {
             if (_data.Length % io.BlockSizeBytes != 0) throw new ArgumentException();
 
-            io.Read(AbsoluteAddress, _data, 0, _data.Length / io.BlockSizeBytes);
+            io.Read(AbsoluteAddress, _data, 0, _data.Length);
             if (!IsMarkerValid()) throw new ArgumentException("Invalid Cluster Marker");
             if (!IsVersionCompatible()) throw new ArgumentException("Unsupported version");
             if (Configuration.Options.VerifyClusterHashes() && !IsHashValid()) throw new IOException("Cluster has invalid hash");
@@ -142,7 +153,7 @@ namespace SRFS.Model.Clusters {
                 UpdateSignature();
                 IsModified = false;
             }
-            io.Write(AbsoluteAddress, _data, 0, _data.Length / io.BlockSizeBytes);
+            io.Write(AbsoluteAddress, _data, 0, _data.Length);
         }
 
         #endregion
