@@ -13,13 +13,6 @@ namespace SRFS.Model.Clusters {
 
         public const string HashAlgorithm = "SHA256";
 
-        public static int HeaderLength => _headerLength;
-        private static readonly int _headerLength;
-        
-        static Cluster() {
-            _headerLength = Offset_ClusterType + Length_ClusterType;
-        }
-
         #endregion
         #region Constructors
 
@@ -27,16 +20,24 @@ namespace SRFS.Model.Clusters {
             if (clusterSize < HeaderLength) throw new ArgumentOutOfRangeException();
 
             _data = new byte[clusterSize];
-            _byteBlock = new ByteBlock(_data, HeaderLength, Configuration.Geometry.BytesPerCluster - HeaderLength);
+            _openBlock = new DataBlock(_data, HeaderLength, Configuration.Geometry.BytesPerCluster - HeaderLength);
+            _openBlock.Changed += changedHandler;
 
             Marker = Constants.SrfsMarker;
             Version = Constants.CurrentVersion;
             ID = Guid.Empty;
             Type = ClusterType.None;
+            _isModified = true;
+        }
+
+        static Cluster() {
+            _headerLength = Offset_ClusterType + Length_ClusterType;
         }
 
         #endregion
         #region Properties
+
+        public static int HeaderLength => _headerLength;
 
         public byte[] Marker {
             get {
@@ -48,7 +49,7 @@ namespace SRFS.Model.Clusters {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length != Length_Marker) throw new ArgumentException();
                 Buffer.BlockCopy(value, 0, _data, Offset_Marker, Length_Marker);
-                IsModified = true;
+                _isModified = true;
             }
         }
 
@@ -62,7 +63,7 @@ namespace SRFS.Model.Clusters {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length != Length_Version) throw new ArgumentException();
                 Buffer.BlockCopy(value, 0, _data, Offset_Version, Length_Version);
-                IsModified = true;
+                _isModified = true;
             }
         }
 
@@ -75,7 +76,7 @@ namespace SRFS.Model.Clusters {
             set {
                 if (value == null) throw new ArgumentNullException();
                 Buffer.BlockCopy(value.ToByteArray(), 0, _data, Offset_ID, Constants.GuidLength);
-                IsModified = true;
+                _isModified = true;
             }
         }
 
@@ -85,12 +86,16 @@ namespace SRFS.Model.Clusters {
             }
             protected set {
                 _data[Offset_ClusterType] = (byte)value;
-                IsModified = true;
+                _isModified = true;
             }
         }
 
         #endregion
         #region Methods
+
+        private void changedHandler(object sender) {
+            _isModified = true;
+        }
 
         public virtual void Clear() {
             Array.Clear(_data, 0, _data.Length);
@@ -98,7 +103,7 @@ namespace SRFS.Model.Clusters {
             Version = Constants.CurrentVersion;
             ID = Configuration.FileSystemID;
             Type = ClusterType.None;
-            IsModified = true;
+            _isModified = true;
         }
 
         public bool IsMarkerValid() {
@@ -142,16 +147,16 @@ namespace SRFS.Model.Clusters {
             if (!IsVersionCompatible()) throw new ArgumentException("Unsupported version");
             if (Configuration.Options.VerifyClusterHashes() && !IsHashValid()) throw new IOException("Cluster has invalid hash");
             if (Configuration.Options.VerifyClusterSignatures() && !IsSignatureValid()) throw new IOException("Cluster has invalid signature");
-            IsModified = false;
+            _isModified = false;
         }
 
         public virtual void Save(IBlockIO io) {
             if (_data.Length % io.BlockSizeBytes != 0) throw new ArgumentException();
 
-            if (IsModified) {
+            if (_isModified) {
                 UpdateHash();
                 UpdateSignature();
-                IsModified = false;
+                _isModified = false;
             }
             io.Write(AbsoluteAddress, _data, 0, _data.Length);
         }
@@ -163,12 +168,7 @@ namespace SRFS.Model.Clusters {
 
         protected abstract long AbsoluteAddress { get; }
 
-        protected virtual ByteBlock Data => _byteBlock;
-
-        protected bool IsModified {
-            get { return _isModified; }
-            set { _isModified = value; }
-        }
+        protected virtual DataBlock OpenBlock => _openBlock;
 
         #endregion
 
@@ -184,6 +184,8 @@ namespace SRFS.Model.Clusters {
 
         #endregion
         #region Fields
+
+        private static readonly int _headerLength;
 
         private static readonly int Offset_Marker = 0;
         private static readonly int Length_Marker = 4;
@@ -207,7 +209,7 @@ namespace SRFS.Model.Clusters {
         private static readonly int Length_ClusterType = sizeof(ClusterType);
 
         private byte[] _data;
-        private ByteBlock _byteBlock;
+        private DataBlock _openBlock;
 
         private int _clusterSize;
         private bool _isModified;
