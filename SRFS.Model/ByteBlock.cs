@@ -108,7 +108,7 @@ namespace SRFS.Model {
 
             if (length == 0) return;
 
-            Array.Clear(_block, _offset + offset, _length);
+            Array.Clear(_block, _offset + offset, length);
         }
 
         private byte[] _block;
