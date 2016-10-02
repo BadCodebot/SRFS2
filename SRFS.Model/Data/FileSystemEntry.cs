@@ -117,15 +117,6 @@ namespace SRFS.Model.Data {
             PropertyChanged(this, new PropertyChangedEventArgs(name));
         }
 
-        public override bool Equals(object obj) {
-            if (obj is FileSystemEntry) return Equals((FileSystemEntry)obj);
-            return false;
-        }
-
-        public override int GetHashCode() {
-            return _id.GetHashCode();
-        }
-
         protected bool Equals(FileSystemEntry other) {
             return _id == other._id
                 && StringComparer.OrdinalIgnoreCase.Compare(_name, other._name) == 0
