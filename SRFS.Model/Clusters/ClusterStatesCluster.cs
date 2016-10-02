@@ -21,12 +21,12 @@
         // Protected
         #region Methods
 
-        protected override void WriteElement(ClusterState value, ByteBlock byteBlock, int offset) {
-            byteBlock.Set(offset, (byte)value);
+        protected override void WriteElement(ClusterState value, DataBlock dataBlock, int offset) {
+            dataBlock.Set(offset, (byte)value);
         }
 
-        protected override ClusterState ReadElement(ByteBlock byteBlock, int offset) {
-            return (ClusterState)byteBlock.ToByte(offset);
+        protected override ClusterState ReadElement(DataBlock dataBlock, int offset) {
+            return (ClusterState)dataBlock.ToByte(offset);
         }
 
         #endregion
