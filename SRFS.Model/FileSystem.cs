@@ -57,8 +57,8 @@ namespace SRFS.Model {
 
             _directoryIndex = new Dictionary<int, int>();
 
-            _containedDirectoriesIndex = new Dictionary<int, SortedList<string, DirectoryEntry>>();
-            _containedFilesIndex = new Dictionary<int, SortedList<string, FileEntry>>();
+            _containedDirectoriesIndex = new Dictionary<int, SortedList<string, Directory>>();
+            _containedFilesIndex = new Dictionary<int, SortedList<string, File>>();
 
             _fileIndex = new Dictionary<int, int>();
 
@@ -84,8 +84,7 @@ namespace SRFS.Model {
 
             _clusterStateTable = new ClusterTable<ClusterState>(
                 (from n in Enumerable.Range(0, clusterCount)
-                 select new ClusterStatesCluster() { Address = n }),
-                sizeof(byte));
+                 select new ClusterStatesCluster() { Address = n }));
 
             // Next Cluster Address Table
             entryCount = Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
@@ -93,14 +92,12 @@ namespace SRFS.Model {
 
             _nextClusterAddressTable = new ClusterTable<int>(
                 (from n in Enumerable.Range(_clusterStateTable.Clusters.Last().Address + 1, clusterCount)
-                 select new IntArrayCluster() { Address = n, Type = ClusterType.NextClusterAddressTable }),
-                sizeof(int));
+                 select new IntArrayCluster() { Address = n, Type = ClusterType.NextClusterAddressTable }));
 
             // Bytes Used Table
             _bytesUsedTable = new ClusterTable<int>(
                 (from n in Enumerable.Range(_nextClusterAddressTable.Clusters.Last().Address + 1, clusterCount)
-                 select new IntArrayCluster() { Address = n, Type = ClusterType.BytesUsedTable }),
-                sizeof(int));
+                 select new IntArrayCluster() { Address = n, Type = ClusterType.BytesUsedTable }));
 
             entryCount = Configuration.Geometry.ClustersPerTrack * Configuration.Geometry.TrackCount;
             clusterCount = (entryCount + VerifyTimesCluster.ElementsPerCluster - 1) / VerifyTimesCluster.ElementsPerCluster;
@@ -108,32 +105,27 @@ namespace SRFS.Model {
             // Verify Time Table
             _verifyTimeTable = new ClusterTable<DateTime>(
                 (from n in Enumerable.Range(_bytesUsedTable.Clusters.Last().Address + 1, clusterCount)
-                 select new VerifyTimesCluster() { Address = n }),
-                sizeof(long));
+                 select new VerifyTimesCluster() { Address = n }));
 
             // Directory Table
-            _directoryTable = new ClusterTable<DirectoryEntry>(
-                new DirectoryEntryCluster[] { new DirectoryEntryCluster() {
-                    Address = _verifyTimeTable.Clusters.Last().Address + 1 } },
-                DirectoryEntryCluster.ElementLength);
+            _directoryTable = new ClusterTable<Directory>(
+                new ObjectArrayCluster<Directory>[] {
+                    Directory.CreateArrayCluster(_verifyTimeTable.Clusters.Last().Address + 1) });
 
             // File Table
-            _fileTable = new ClusterTable<FileEntry>(
-                new FileEntryCluster[] { new FileEntryCluster() {
-                    Address = _directoryTable.Clusters.Last().Address + 1 } },
-                FileEntryCluster.ElementLength);
+            _fileTable = new ClusterTable<File>(
+                new ObjectArrayCluster<File>[] {
+                    File.CreateArrayCluster(_directoryTable.Clusters.Last().Address + 1) });
 
             // Access Rules Table
-            _accessRules = new ClusterTable<FileSystemAccessRuleData>(
-                new AccessRuleCluster[] { new AccessRuleCluster() {
-                    Address = _fileTable.Clusters.Last().Address + 1 } },
-                AccessRuleCluster.EntryLength);
+            _accessRules = new ClusterTable<SrfsAccessRule>(
+                new ObjectArrayCluster<SrfsAccessRule>[] {
+                    SrfsAccessRule.CreateArrayCluster(_fileTable.Clusters.Last().Address + 1) });
 
             // Audit Rules Table
-            _auditRules = new ClusterTable<FileSystemAuditRuleData>(
-                new AuditRuleCluster[] { new AuditRuleCluster() {
-                    Address = _accessRules.Clusters.Last().Address + 1 } },
-                AuditRuleCluster.EntryLength);
+            _auditRules = new ClusterTable<SrfsAuditRule>(
+                new ObjectArrayCluster<SrfsAuditRule>[] { 
+                    SrfsAuditRule.CreateArrayCluster(_accessRules.Clusters.Last().Address + 1) });
 
             // Initialize the tables
             for (int i = 0; i < _clusterStateTable.Count; i++) _clusterStateTable[i] = ClusterState.Unused;
@@ -164,7 +156,7 @@ namespace SRFS.Model {
             }
 
             // Create the root directory
-            DirectoryEntry dir = CreateDirectory(null, "");
+            Directory dir = CreateDirectory(null, "");
             AddAccessRule(dir, 
                 new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
                 InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, 
@@ -193,8 +185,7 @@ namespace SRFS.Model {
 
             _clusterStateTable = new ClusterTable<ClusterState>(
                 (from n in Enumerable.Range(0, clusterCount)
-                 select new ClusterStatesCluster() { Address = n }),
-                sizeof(byte));
+                 select new ClusterStatesCluster() { Address = n }));
             _clusterStateTable.Load(_blockIO);
 
             // Next Cluster Address Table
@@ -203,15 +194,13 @@ namespace SRFS.Model {
 
             _nextClusterAddressTable = new ClusterTable<int>(
                 (from n in Enumerable.Range(_clusterStateTable.Clusters.Last().Address + 1, clusterCount)
-                 select new IntArrayCluster() { Address = n, Type = ClusterType.NextClusterAddressTable }),
-                sizeof(int));
+                 select new IntArrayCluster() { Address = n, Type = ClusterType.NextClusterAddressTable }));
             _nextClusterAddressTable.Load(_blockIO);
 
             // Bytes Used Table
             _bytesUsedTable = new ClusterTable<int>(
                 (from n in Enumerable.Range(_nextClusterAddressTable.Clusters.Last().Address + 1, clusterCount)
-                 select new IntArrayCluster() { Address = n, Type = ClusterType.BytesUsedTable }),
-                sizeof(int));
+                 select new IntArrayCluster() { Address = n, Type = ClusterType.BytesUsedTable }));
             _bytesUsedTable.Load(_blockIO);
 
             entryCount = Configuration.Geometry.ClustersPerTrack * Configuration.Geometry.TrackCount;
@@ -220,45 +209,40 @@ namespace SRFS.Model {
             // Verify Time Table
             _verifyTimeTable = new ClusterTable<DateTime>(
                 (from n in Enumerable.Range(_bytesUsedTable.Clusters.Last().Address + 1, clusterCount)
-                 select new VerifyTimesCluster() { Address = n }),
-                sizeof(long));
+                 select new VerifyTimesCluster() { Address = n }));
             _verifyTimeTable.Load(_blockIO);
 
             // Directory Table
-            _directoryTable = new ClusterTable<DirectoryEntry>(
+            _directoryTable = new ClusterTable<Directory>(
                 from n in getClusterChain(_verifyTimeTable.Clusters.Last().Address + 1)
-                select new DirectoryEntryCluster() { Address = n },
-                DirectoryEntryCluster.ElementLength);
+                select Directory.CreateArrayCluster(n));
             _directoryTable.Load(_blockIO);
 
             // File Table
-            _fileTable = new ClusterTable<FileEntry>(
+            _fileTable = new ClusterTable<File>(
                 from n in getClusterChain(_directoryTable.Clusters.First().Address + 1)
-                select new FileEntryCluster() { Address = n },
-                FileEntryCluster.ElementLength);
+                select File.CreateArrayCluster(n));
             _fileTable.Load(_blockIO);
 
             // Access Rules Table
-            _accessRules = new ClusterTable<FileSystemAccessRuleData>(
+            _accessRules = new ClusterTable<Data.SrfsAccessRule>(
                 from n in getClusterChain(_fileTable.Clusters.First().Address + 1)
-                select new AccessRuleCluster() { Address = n },
-                AccessRuleCluster.EntryLength);
+                select SrfsAccessRule.CreateArrayCluster(n));
             _accessRules.Load(_blockIO);
 
             // Audit Rules Table
-            _auditRules = new ClusterTable<FileSystemAuditRuleData>(
+            _auditRules = new ClusterTable<Data.SrfsAuditRule>(
                 from n in getClusterChain(_accessRules.Clusters.First().Address + 1)
-                select new AuditRuleCluster() { Address = n },
-                AuditRuleCluster.EntryLength);
+                select SrfsAuditRule.CreateArrayCluster(n));
             _auditRules.Load(_blockIO);
 
             // Create the Indices
             for (int i = 0; i < _directoryTable.Count; i++) {
-                DirectoryEntry d = _directoryTable[i];
+                Directory d = _directoryTable[i];
                 if (d != null) {
                     _directoryIndex.Add(d.ID, i);
-                    _containedDirectoriesIndex.Add(d.ID, new SortedList<string, DirectoryEntry>(StringComparer.OrdinalIgnoreCase));
-                    _containedFilesIndex.Add(d.ID, new SortedList<string, FileEntry>(StringComparer.OrdinalIgnoreCase));
+                    _containedDirectoriesIndex.Add(d.ID, new SortedList<string, Directory>(StringComparer.OrdinalIgnoreCase));
+                    _containedFilesIndex.Add(d.ID, new SortedList<string, File>(StringComparer.OrdinalIgnoreCase));
                     _accessRulesIndex.Add(d.ID, new List<int>());
                     _auditRulesIndex.Add(d.ID, new List<int>());
                 }
@@ -269,7 +253,7 @@ namespace SRFS.Model {
             }
 
             for (int i = 0; i < _fileTable.Count; i++) {
-                FileEntry f = _fileTable[i];
+                File f = _fileTable[i];
                 if (f != null) {
                     _fileIndex.Add(f.ID, i);
                     _containedFilesIndex[f.ParentID].Add(f.Name, f);
@@ -279,12 +263,12 @@ namespace SRFS.Model {
             }
 
             for (int i = 0; i < _accessRules.Count; i++) {
-                FileSystemAccessRuleData r = _accessRules[i];
+                Data.SrfsAccessRule r = _accessRules[i];
                 if (r != null) _accessRulesIndex[r.ID].Add(i);
             }
 
             for (int i = 0; i < _auditRules.Count; i++) {
-                FileSystemAuditRuleData r = _auditRules[i];
+                Data.SrfsAuditRule r = _auditRules[i];
                 if (r != null) _auditRulesIndex[r.ID].Add(i);
             }
         }
@@ -309,29 +293,29 @@ namespace SRFS.Model {
 
         public void Dispose() => Dispose(true);
 
-        public IDictionary<string, DirectoryEntry> GetContainedDirectories(DirectoryEntry dir) {
-            return new ReadOnlyDictionary<string, DirectoryEntry>(_containedDirectoriesIndex[dir.ID]);
+        public IDictionary<string, Directory> GetContainedDirectories(Directory dir) {
+            return new ReadOnlyDictionary<string, Directory>(_containedDirectoriesIndex[dir.ID]);
         }
 
-        public IDictionary<string, FileEntry> GetContainedFiles(DirectoryEntry dir) {
-            return new ReadOnlyDictionary<string, FileEntry>(_containedFilesIndex[dir.ID]);
+        public IDictionary<string, File> GetContainedFiles(Directory dir) {
+            return new ReadOnlyDictionary<string, File>(_containedFilesIndex[dir.ID]);
         }
 
-        public IEnumerable<FileSystemAccessRule> GetAccessRules(FileSystemEntry entry) {
+        public IEnumerable<FileSystemAccessRule> GetAccessRules(FileSystemObject entry) {
             return (from i in _accessRulesIndex[entry.ID] select _accessRules[i].Rule);
         }
 
-        public IEnumerable<FileSystemAuditRule> GetAuditRules(FileSystemEntry entry) {
+        public IEnumerable<FileSystemAuditRule> GetAuditRules(FileSystemObject entry) {
             return (from i in _auditRulesIndex[entry.ID] select _auditRules[i].Rule);
         }
 
-        public void MoveDirectory(DirectoryEntry dir, DirectoryEntry newDirectory) {
+        public void MoveDirectory(Directory dir, Directory newDirectory) {
             _containedDirectoriesIndex[dir.ParentID].Remove(dir.Name);
             _containedDirectoriesIndex[newDirectory.ID].Add(dir.Name, dir);
             dir.ParentID = newDirectory.ID;
         }
 
-        public DirectoryEntry CreateDirectory(DirectoryEntry parent, string name) {
+        public Directory CreateDirectory(Directory parent, string name) {
             if (parent == null && _directoryIndex.Count != 0) throw new ArgumentException();
 
             if (parent != null) {
@@ -339,21 +323,21 @@ namespace SRFS.Model {
                 if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
             }
 
-            DirectoryEntry dir = new DirectoryEntry(_nextEntryID++, name);
+            Directory dir = new Directory(_nextEntryID++, name);
             if (parent != null) _containedDirectoriesIndex[parent.ID].Add(name, dir);
             int index = getFreeDirectoryIndex();
             _directoryTable[index] = dir;
             _directoryIndex.Add(dir.ID, index);
 
-            _containedDirectoriesIndex.Add(dir.ID, new SortedList<string, DirectoryEntry>(StringComparer.OrdinalIgnoreCase));
-            _containedFilesIndex.Add(dir.ID, new SortedList<string, FileEntry>(StringComparer.OrdinalIgnoreCase));
+            _containedDirectoriesIndex.Add(dir.ID, new SortedList<string, Directory>(StringComparer.OrdinalIgnoreCase));
+            _containedFilesIndex.Add(dir.ID, new SortedList<string, File>(StringComparer.OrdinalIgnoreCase));
             _accessRulesIndex.Add(dir.ID, new List<int>());
             _auditRulesIndex.Add(dir.ID, new List<int>());
 
             return dir;
         }
 
-        public void RemoveDirectory(DirectoryEntry dir) {
+        public void RemoveDirectory(Directory dir) {
             if (_containedDirectoriesIndex[dir.ID].Count > 0) throw new InvalidOperationException();
             if (_containedFilesIndex[dir.ID].Count > 0) throw new InvalidOperationException();
 
@@ -373,7 +357,7 @@ namespace SRFS.Model {
             if (index < _nextDirectoryIndex) _nextDirectoryIndex = index;
         }
 
-        public void RemoveFile(FileEntry file) {
+        public void RemoveFile(File file) {
             lock (_lock) {
                 List<int> clusters = getClusterChain(file.FirstCluster).ToList();
                 foreach (var cluster in clusters) DeallocateCluster(cluster);
@@ -393,10 +377,10 @@ namespace SRFS.Model {
             if (index < _nextFileIndex) _nextFileIndex = index;
         }
 
-        public void AddAccessRule(FileSystemEntry entry, FileSystemAccessRule rule) {
+        public void AddAccessRule(FileSystemObject entry, FileSystemAccessRule rule) {
             int index = getFreeAccessRuleIndex();
-            _accessRules[index] = new FileSystemAccessRuleData(
-                entry is DirectoryEntry ? FileSystemObjectType.Directory : FileSystemObjectType.File, entry.ID, rule);
+            _accessRules[index] = new Data.SrfsAccessRule(
+                entry is Directory ? FileSystemObjectType.Directory : FileSystemObjectType.File, entry.ID, rule);
             _accessRulesIndex[entry.ID].Add(index);
         }
 
@@ -463,10 +447,10 @@ namespace SRFS.Model {
             }
         }
 
-        public FileSystemEntry GetFileSystemObject(string path) {
+        public FileSystemObject GetFileSystemObject(string path) {
             string[] components = path.Split(Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
             if (components.Length < 2) throw new IOException($"Incomplete path '{path}'");
-            DirectoryEntry dir = (DirectoryEntry)_directoryTable[0];
+            Directory dir = (Directory)_directoryTable[0];
             for (int i = 1; i < components.Length - 1; i++) {
                 if (!_containedDirectoriesIndex[dir.ID].TryGetValue(components[i], out dir))
                     throw new DirectoryNotFoundException($"Directory component {i} not found in '{path}'");
@@ -474,18 +458,18 @@ namespace SRFS.Model {
 
             if (components[components.Length - 1] == string.Empty) return dir;
 
-            DirectoryEntry d;
+            Directory d;
             if (_containedDirectoriesIndex[dir.ID].TryGetValue(components[components.Length - 1], out d)) return d;
-            FileEntry f;
+            File f;
             if (_containedFilesIndex[dir.ID].TryGetValue(components[components.Length - 1], out f)) return f;
 
             return null;
         }
 
-        public DirectoryEntry GetParentDirectory(string path, out string name) {
+        public Directory GetParentDirectory(string path, out string name) {
             string[] components = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             if (components.Length < 2) throw new IOException($"Incomplete path '{path}'");
-            DirectoryEntry dir = _directoryTable[0];
+            Directory dir = _directoryTable[0];
             for (int i = 1; i < components.Length - 1; i++) {
                 if (!_containedDirectoriesIndex[dir.ID].TryGetValue(components[i], out dir)) throw new DirectoryNotFoundException($"Directory component {i} not found in '{path}'");
             }
@@ -528,19 +512,19 @@ namespace SRFS.Model {
         #region Private Fields
 
         private int getFreeDirectoryIndex() {
-            return getFreeIndex(ref _nextDirectoryIndex, _directoryTable, n => new DirectoryEntryCluster() { Address = n });
+            return getFreeIndex(ref _nextDirectoryIndex, _directoryTable, n => Directory.CreateArrayCluster(n));
         }
 
         private int getFreeFileIndex() {
-            return getFreeIndex(ref _nextFileIndex, _fileTable, n => new FileEntryCluster() { Address = n });
+            return getFreeIndex(ref _nextFileIndex, _fileTable, n => File.CreateArrayCluster(n));
         }
 
         private int getFreeAccessRuleIndex() {
-            return getFreeIndex(ref _nextAccessRuleIndex, _accessRules, n => new AccessRuleCluster() { Address = n });
+            return getFreeIndex(ref _nextAccessRuleIndex, _accessRules, n => SrfsAccessRule.CreateArrayCluster(n));
         }
 
         private int getFreeAuditRuleIndex() {
-            return getFreeIndex(ref _nextAuditRuleIndex, _auditRules, n => new AuditRuleCluster() { Address = n });
+            return getFreeIndex(ref _nextAuditRuleIndex, _auditRules, n => SrfsAuditRule.CreateArrayCluster(n));
         }
 
         private int getFreeIndex<T>(ref int nextIndex, ClusterTable<T> table, Func<int, ArrayCluster<T>> clusterFactory) {
@@ -570,19 +554,19 @@ namespace SRFS.Model {
         private ClusterTable<int> _bytesUsedTable;
         private ClusterTable<DateTime> _verifyTimeTable;
 
-        private ClusterTable<DirectoryEntry> _directoryTable;
+        private ClusterTable<Directory> _directoryTable;
         private Dictionary<int, int> _directoryIndex;
 
-        private Dictionary<int, SortedList<string, DirectoryEntry>> _containedDirectoriesIndex;
-        private Dictionary<int, SortedList<string, FileEntry>> _containedFilesIndex;
+        private Dictionary<int, SortedList<string, Directory>> _containedDirectoriesIndex;
+        private Dictionary<int, SortedList<string, File>> _containedFilesIndex;
 
-        private ClusterTable<FileEntry> _fileTable;
+        private ClusterTable<File> _fileTable;
         private Dictionary<int, int> _fileIndex;
 
-        private ClusterTable<FileSystemAccessRuleData> _accessRules;
+        private ClusterTable<Data.SrfsAccessRule> _accessRules;
         private Dictionary<int, List<int>> _accessRulesIndex;
 
-        private ClusterTable<FileSystemAuditRuleData> _auditRules;
+        private ClusterTable<Data.SrfsAuditRule> _auditRules;
         private Dictionary<int, List<int>> _auditRulesIndex;
 
         private PartitionIO _partitionIO;
