@@ -15,7 +15,7 @@ namespace SRFS.Model.Data {
             Attributes = FileAttributes.Normal;
         }
 
-        public Directory(ByteBlock byteBlock, int offset) : base(byteBlock, offset) { }
+        public Directory(DataBlock dataBlock, int offset) : base(dataBlock, offset) { }
 
         public override FileAttributes Attributes {
             get {
