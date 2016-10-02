@@ -24,6 +24,15 @@ namespace SRFS.Model.Data {
             }
         }
 
+        public override bool Equals(object obj) {
+            if (obj is DirectoryEntry) return Equals((DirectoryEntry)obj);
+            return false;
+        }
+
+        public override int GetHashCode() {
+            return ID.GetHashCode();
+        }
+
         public bool Equals(DirectoryEntry other) {
             return base.Equals(other);
         }

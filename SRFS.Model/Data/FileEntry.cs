@@ -18,6 +18,15 @@ namespace SRFS.Model.Data {
             _firstCluster = byteBlock.ToInt32(offset);
         }
 
+        public override bool Equals(object obj) {
+            if (obj is FileEntry) return Equals((FileEntry)obj);
+            return false;
+        }
+
+        public override int GetHashCode() {
+            return ID.GetHashCode();
+        }
+
         public bool Equals(FileEntry other) {
             return base.Equals(other) &&
                 _length == other._length &&
