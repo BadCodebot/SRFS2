@@ -12,8 +12,8 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Constructors
 
-        public FileEntryCluster(FileSystem fileSystem) : base(ElementLength) {
-            _fileSystem = fileSystem;
+        public FileEntryCluster() : base(ElementLength) {
+            Type = ClusterType.FileTable;
         }
 
         #endregion
@@ -53,43 +53,7 @@ namespace SRFS.Model.Clusters {
                 byteBlock.Set(offset, true);
                 offset += sizeof(bool);
 
-                byteBlock.Set(offset, value.ID);
-                offset += sizeof(int);
-
-                Debug.Assert(value.Name.Length <= byte.MaxValue);
-                byteBlock.Set(offset, (byte)value.Name.Length);
-                offset += sizeof(byte);
-
-                byteBlock.Set(offset, value.Name);
-                byteBlock.Clear(offset + value.Name.Length * sizeof(char), (Constants.MaximumNameLength - value.Name.Length) * sizeof(char));
-                offset += Constants.MaximumNameLength * sizeof(char);
-
-                byteBlock.Set(offset, value.ParentID);
-                offset += sizeof(int);
-
-                byteBlock.Set(offset, (int)value.Attributes);
-                offset += sizeof(int);
-
-                byteBlock.Set(offset, value.LastWriteTime.Ticks);
-                offset += sizeof(long);
-
-                byteBlock.Set(offset, value.CreationTime.Ticks);
-                offset += sizeof(long);
-
-                byteBlock.Set(offset, value.LastAccessTime.Ticks);
-                offset += sizeof(long);
-
-                byteBlock.Set(offset, value.Owner);
-                offset += Constants.SecurityIdentifierLength;
-
-                byteBlock.Set(offset, value.Group);
-                offset += Constants.SecurityIdentifierLength;
-
-                byteBlock.Set(offset, value.Length);
-                offset += sizeof(long);
-
-                byteBlock.Set(offset, value.FirstCluster);
-                offset += sizeof(int);
+                byteBlock.Set(offset, value);
             }
         }
 
@@ -97,57 +61,11 @@ namespace SRFS.Model.Clusters {
             if (!byteBlock.ToBoolean(offset)) return null;
             offset += sizeof(bool);
 
-            int id = byteBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            int nameLength = byteBlock.ToByte(offset);
-            offset += sizeof(byte);
-
-            string name = byteBlock.ToString(offset, nameLength);
-            offset += Constants.MaximumNameLength * sizeof(char);
-
-            int parentID = byteBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            FileAttributes flags = (FileAttributes)byteBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            DateTime lastWriteTime = new DateTime(byteBlock.ToInt64(offset));
-            offset += sizeof(long);
-
-            DateTime creationTime = new DateTime(byteBlock.ToInt64(offset));
-            offset += sizeof(long);
-
-            DateTime lastAccessTime = new DateTime(byteBlock.ToInt64(offset));
-            offset += sizeof(long);
-
-            SecurityIdentifier owner = byteBlock.ToSecurityIdentifier(offset);
-            offset += Constants.SecurityIdentifierLength;
-
-            SecurityIdentifier group = byteBlock.ToSecurityIdentifier(offset);
-            offset += Constants.SecurityIdentifierLength;
-
-            long length = byteBlock.ToInt64(offset);
-            offset += sizeof(long);
-
-            int firstCluster = byteBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            return new FileEntry(_fileSystem, id, name) {
-                ParentID = parentID,
-                Attributes = flags,
-                LastWriteTime = lastWriteTime,
-                CreationTime = creationTime,
-                LastAccessTime = lastAccessTime,
-                Owner = owner,
-                Group = group,
-                Length = length,
-                FirstCluster = firstCluster };
+            return new FileEntry(byteBlock, offset);
         }
 
         #endregion
 
         private static int? _elementsPerCluster;
-        private FileSystem _fileSystem;
     }
 }
