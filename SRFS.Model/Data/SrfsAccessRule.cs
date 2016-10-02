@@ -1,38 +1,19 @@
 ﻿using SRFS.Model.Clusters;
+using System;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using System;
 
 namespace SRFS.Model.Data {
 
     public class SrfsAccessRule : IEquatable<SrfsAccessRule> {
 
-        public static ObjectArrayCluster<SrfsAccessRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAccessRule>(ClusterType.AccessRulesTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAccessRule(block, offset)) { Address = address };
+        // Public
+        #region Constructors
 
         public SrfsAccessRule(FileSystemObjectType type, int id, FileSystemAccessRule rule) {
             _type = type;
             _id = id;
             _accessRule = rule;
-        }
-
-        public override bool Equals(object obj) {
-            if (obj is SrfsAccessRule) return Equals((SrfsAccessRule)obj);
-            return false;
-        }
-
-        public bool Equals(SrfsAccessRule obj) {
-            return _id == obj._id &&
-                _type == obj._type &&
-                _accessRule.IdentityReference == obj._accessRule.IdentityReference &&
-                _accessRule.FileSystemRights == obj._accessRule.FileSystemRights &&
-                _accessRule.InheritanceFlags == obj._accessRule.InheritanceFlags &&
-                _accessRule.PropagationFlags == obj._accessRule.PropagationFlags &&
-                _accessRule.AccessControlType == obj._accessRule.AccessControlType;
-        }
-
-        public override int GetHashCode() {
-            return _id.GetHashCode();
         }
 
         public SrfsAccessRule(DataBlock dataBlock, int offset) {
@@ -59,9 +40,8 @@ namespace SRFS.Model.Data {
             _accessRule = new FileSystemAccessRule(identityReference, fileSystemRights, inheritanceFlags, propagationFlags, accessControlType);
         }
 
-        public FileSystemObjectType FileSystemObjectType => _type;
-        public int ID => _id;
-        public FileSystemAccessRule Rule => _accessRule;
+        #endregion
+        #region Properties
 
         public const int StorageLength =
             sizeof(byte) + // File System Object Type
@@ -71,6 +51,16 @@ namespace SRFS.Model.Data {
             sizeof(int) + // Inheritance Flags
             sizeof(int) + // Propagation Flags
             sizeof(int); // Access Control Type
+
+        public FileSystemObjectType FileSystemObjectType => _type;
+        public int ID => _id;
+        public FileSystemAccessRule Rule => _accessRule;
+
+        #endregion
+        #region Methods
+
+        public static ObjectArrayCluster<SrfsAccessRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAccessRule>(ClusterType.AccessRulesTable,
+            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAccessRule(block, offset)) { Address = address };
 
         public void Save(DataBlock dataBlock, int offset) {
             dataBlock.Set(offset, (byte)_type);
@@ -94,8 +84,38 @@ namespace SRFS.Model.Data {
             dataBlock.Set(offset, (int)_accessRule.AccessControlType);
         }
 
+        //--- IEquatable Implementation ---
+
+        public bool Equals(SrfsAccessRule obj) {
+            return _id == obj._id &&
+                _type == obj._type &&
+                _accessRule.IdentityReference == obj._accessRule.IdentityReference &&
+                _accessRule.FileSystemRights == obj._accessRule.FileSystemRights &&
+                _accessRule.InheritanceFlags == obj._accessRule.InheritanceFlags &&
+                _accessRule.PropagationFlags == obj._accessRule.PropagationFlags &&
+                _accessRule.AccessControlType == obj._accessRule.AccessControlType;
+        }
+
+        //--- Object Overrides ---
+
+        public override bool Equals(object obj) {
+            if (obj is SrfsAccessRule) return Equals((SrfsAccessRule)obj);
+            return false;
+        }
+
+        public override int GetHashCode() {
+            return _id.GetHashCode();
+        }
+
+        #endregion
+
+        // Private
+        #region Fields
+
         private readonly FileSystemObjectType _type;
         private readonly int _id;
         private readonly FileSystemAccessRule _accessRule;
+
+        #endregion
     }
 }
