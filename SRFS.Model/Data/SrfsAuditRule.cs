@@ -35,26 +35,26 @@ namespace SRFS.Model.Data {
             return _id.GetHashCode();
         }
 
-        public SrfsAuditRule(ByteBlock byteBlock, int offset) {
-            _type = (FileSystemObjectType)byteBlock.ToByte(offset);
+        public SrfsAuditRule(DataBlock dataBlock, int offset) {
+            _type = (FileSystemObjectType)dataBlock.ToByte(offset);
             offset += sizeof(byte);
 
-            _id = byteBlock.ToInt32(offset);
+            _id = dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            SecurityIdentifier identityReference = byteBlock.ToSecurityIdentifier(offset);
+            SecurityIdentifier identityReference = dataBlock.ToSecurityIdentifier(offset);
             offset += Constants.SecurityIdentifierLength;
 
-            FileSystemRights fileSystemRights = (FileSystemRights)byteBlock.ToInt32(offset);
+            FileSystemRights fileSystemRights = (FileSystemRights)dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            InheritanceFlags inheritanceFlags = (InheritanceFlags)byteBlock.ToInt32(offset);
+            InheritanceFlags inheritanceFlags = (InheritanceFlags)dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            PropagationFlags propagationFlags = (PropagationFlags)byteBlock.ToInt32(offset);
+            PropagationFlags propagationFlags = (PropagationFlags)dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            AuditFlags auditFlags = (AuditFlags)byteBlock.ToInt32(offset);
+            AuditFlags auditFlags = (AuditFlags)dataBlock.ToInt32(offset);
 
             _auditRule = new FileSystemAuditRule(identityReference, fileSystemRights, inheritanceFlags, propagationFlags, auditFlags);
         }
@@ -72,26 +72,26 @@ namespace SRFS.Model.Data {
             sizeof(int) + // Propagation Flags
             sizeof(int); // Audit Flags
 
-        public void Save(ByteBlock byteBlock, int offset) {
-            byteBlock.Set(offset, (byte)_type);
+        public void Save(DataBlock dataBlock, int offset) {
+            dataBlock.Set(offset, (byte)_type);
             offset += sizeof(byte);
 
-            byteBlock.Set(offset, _id);
+            dataBlock.Set(offset, _id);
             offset += sizeof(int);
 
-            byteBlock.Set(offset, (SecurityIdentifier)_auditRule.IdentityReference);
+            dataBlock.Set(offset, (SecurityIdentifier)_auditRule.IdentityReference);
             offset += Constants.SecurityIdentifierLength;
 
-            byteBlock.Set(offset, (int)_auditRule.FileSystemRights);
+            dataBlock.Set(offset, (int)_auditRule.FileSystemRights);
             offset += sizeof(int);
 
-            byteBlock.Set(offset, (int)_auditRule.InheritanceFlags);
+            dataBlock.Set(offset, (int)_auditRule.InheritanceFlags);
             offset += sizeof(int);
 
-            byteBlock.Set(offset, (int)_auditRule.PropagationFlags);
+            dataBlock.Set(offset, (int)_auditRule.PropagationFlags);
             offset += sizeof(int);
 
-            byteBlock.Set(offset, (int)_auditRule.AuditFlags);
+            dataBlock.Set(offset, (int)_auditRule.AuditFlags);
         }
 
         private readonly FileSystemObjectType _type;
