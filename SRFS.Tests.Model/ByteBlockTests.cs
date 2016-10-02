@@ -14,7 +14,7 @@ namespace SRFS.Tests.Model {
         [TestMethod]
         public void ByteBlockSetAndReadTest() {
             byte[] bytes = new byte[bufferSize];
-            ByteBlock block = new ByteBlock(bytes);
+            DataBlock block = new DataBlock(bytes);
 
             Set1(block);
             Read1(block);
@@ -29,8 +29,8 @@ namespace SRFS.Tests.Model {
             int offset = bufferSize / 2;
             int length = bufferSize - offset;
 
-            ByteBlock b1 = new ByteBlock(bytes);
-            ByteBlock b2 = new ByteBlock(b1, offset);
+            DataBlock b1 = new DataBlock(bytes);
+            DataBlock b2 = new DataBlock(b1, offset);
 
             byte[] h0;
             using (var h = new SHA256Cng()) {
@@ -54,7 +54,7 @@ namespace SRFS.Tests.Model {
             Assert.IsTrue(h0.SequenceEqual(h2));
         }
 
-        private void Set1(ByteBlock block) {
+        private void Set1(DataBlock block) {
             int offset = 0;
             block.Set(offset, byteTestValue);
             offset += sizeof(byte);
@@ -72,47 +72,47 @@ namespace SRFS.Tests.Model {
             offset += sizeof(bool);
         }
 
-        private void Set2(ByteBlock block) {
-            ByteBlock subBlock = block;
+        private void Set2(DataBlock block) {
+            DataBlock subBlock = block;
             int size = block.Length;
 
             subBlock.Set(0, byteTestValue);
-            subBlock = new ByteBlock(subBlock, sizeof(byte));
+            subBlock = new DataBlock(subBlock, sizeof(byte));
             size -= sizeof(byte);
             Assert.AreEqual(size, subBlock.Length);
 
             subBlock.Set(0, sidTestValue);
-            subBlock = new ByteBlock(subBlock, Constants.SecurityIdentifierLength);
+            subBlock = new DataBlock(subBlock, Constants.SecurityIdentifierLength);
             size -= Constants.SecurityIdentifierLength;
             Assert.AreEqual(size, subBlock.Length);
 
             subBlock.Set(0, byteArrayTestValue);
-            subBlock = new ByteBlock(subBlock, byteArrayTestValue.Length * sizeof(byte));
+            subBlock = new DataBlock(subBlock, byteArrayTestValue.Length * sizeof(byte));
             size -= byteArrayTestValue.Length * sizeof(byte);
             Assert.AreEqual(size, subBlock.Length);
 
             subBlock.Set(0, intTestValue);
-            subBlock = new ByteBlock(subBlock, sizeof(int));
+            subBlock = new DataBlock(subBlock, sizeof(int));
             size -= sizeof(int);
             Assert.AreEqual(size, subBlock.Length);
 
             subBlock.Set(0, stringTestValue);
-            subBlock = new ByteBlock(subBlock, stringTestValue.Length * sizeof(char));
+            subBlock = new DataBlock(subBlock, stringTestValue.Length * sizeof(char));
             size -= stringTestValue.Length * sizeof(char);
             Assert.AreEqual(size, subBlock.Length);
 
             subBlock.Set(0, longTestValue);
-            subBlock = new ByteBlock(subBlock, sizeof(long));
+            subBlock = new DataBlock(subBlock, sizeof(long));
             size -= sizeof(long);
             Assert.AreEqual(size, subBlock.Length);
 
             subBlock.Set(0, boolTestValue);
-            subBlock = new ByteBlock(subBlock, sizeof(bool));
+            subBlock = new DataBlock(subBlock, sizeof(bool));
             size -= sizeof(bool);
             Assert.AreEqual(size, subBlock.Length);
         }
 
-        private void Read1(ByteBlock mainBlock) {
+        private void Read1(DataBlock mainBlock) {
             int offset = 0;
             Assert.AreEqual(byteTestValue, mainBlock.ToByte(offset), "Bytes not equal");
             offset += sizeof(byte);
@@ -133,7 +133,7 @@ namespace SRFS.Tests.Model {
         [TestMethod]
         public void ByteBlockContainedBlockTest() {
             byte[] bytes = new byte[bufferSize];
-            ByteBlock mainBlock = new ByteBlock(bytes);
+            DataBlock mainBlock = new DataBlock(bytes);
 
             Set2(mainBlock);
             Read1(mainBlock);
