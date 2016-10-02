@@ -53,7 +53,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ByteBlock.cs" />
+    <Compile Include="DataBlock.cs" />
     <Compile Include="ClusterState.cs" />
     <Compile Include="Clusters\ObjectArrayCluster.cs" />
     <Compile Include="Clusters\ArrayCluster.cs" />
