@@ -52,12 +52,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ByteBlockTests.cs" />
+    <Compile Include="Clusters\FileEntryClusterTests.cs" />
+    <Compile Include="Clusters\DirectoryEntryClusterTests.cs" />
+    <Compile Include="Clusters\VerifyTimesClusterTests.cs" />
+    <Compile Include="Clusters\IntArrayClusterTests.cs" />
+    <Compile Include="Clusters\ClusterStatesClusterTests.cs" />
+    <Compile Include="ConfigurationTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\SRFS.IO\SRFS.IO.csproj">
+      <Project>{9908b8e2-3202-437e-adcf-3db94c81a2b6}</Project>
+      <Name>SRFS.IO</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SRFS.Model\SRFS.Model.csproj">
       <Project>{a6833bef-fe1e-43ac-923d-7abf4871c566}</Project>
       <Name>SRFS.Model</Name>

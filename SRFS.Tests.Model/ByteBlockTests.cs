@@ -12,7 +12,7 @@ namespace SRFS.Tests.Model {
     public class ByteBlockTests {
 
         [TestMethod]
-        public void SetAndReadTest() {
+        public void ByteBlockSetAndReadTest() {
             byte[] bytes = new byte[bufferSize];
             ByteBlock block = new ByteBlock(bytes);
 
@@ -21,7 +21,7 @@ namespace SRFS.Tests.Model {
         }
 
         [TestMethod]
-        public void HashTest() {
+        public void ByteBlockHashTest() {
             byte[] bytes = new byte[bufferSize];
             Random r = new Random();
             r.NextBytes(bytes);
@@ -131,7 +131,7 @@ namespace SRFS.Tests.Model {
         }
 
         [TestMethod]
-        public void ContainedBlockTest() {
+        public void ByteBlockContainedBlockTest() {
             byte[] bytes = new byte[bufferSize];
             ByteBlock mainBlock = new ByteBlock(bytes);
 
