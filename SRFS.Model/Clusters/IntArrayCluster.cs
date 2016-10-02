@@ -16,6 +16,17 @@
             }
         }
 
+        public new ClusterType Type {
+            get {
+                return base.Type;
+            }
+            set {
+                base.Type = value;
+                IsModified = true;
+            }
+        }
+
+
         // Protected
         #region Methods
 
