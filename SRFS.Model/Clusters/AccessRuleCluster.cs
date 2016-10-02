@@ -9,7 +9,9 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Constructors
 
-        public AccessRuleCluster() : base(EntryLength) { }
+        public AccessRuleCluster() : base(EntryLength) {
+            Type = ClusterType.AccessRulesTable;
+        }
 
         #endregion
 

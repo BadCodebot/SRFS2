@@ -9,7 +9,9 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Constructors
 
-        public AuditRuleCluster() : base(EntryLength) { }
+        public AuditRuleCluster() : base(EntryLength) {
+            Type = ClusterType.AuditRulesTable;
+        }
 
         #endregion
 
