@@ -142,68 +142,68 @@ namespace SRFS.Model.Data {
         private SecurityIdentifier _owner;
         private SecurityIdentifier _group;
 
-        public virtual void Save(ByteBlock byteBlock, int offset) {
-            byteBlock.Set(offset, ID);
+        public virtual void Save(DataBlock dataBlock, int offset) {
+            dataBlock.Set(offset, ID);
             offset += sizeof(int);
 
             Debug.Assert(Name.Length <= byte.MaxValue);
-            byteBlock.Set(offset, (byte)Name.Length);
+            dataBlock.Set(offset, (byte)Name.Length);
             offset += sizeof(byte);
 
-            byteBlock.Set(offset, Name);
-            byteBlock.Clear(offset + Name.Length * sizeof(char), (Constants.MaximumNameLength - Name.Length) * sizeof(char));
+            dataBlock.Set(offset, Name);
+            dataBlock.Clear(offset + Name.Length * sizeof(char), (Constants.MaximumNameLength - Name.Length) * sizeof(char));
             offset += Constants.MaximumNameLength * sizeof(char);
 
-            byteBlock.Set(offset, ParentID);
+            dataBlock.Set(offset, ParentID);
             offset += sizeof(int);
 
-            byteBlock.Set(offset, (int)Attributes);
+            dataBlock.Set(offset, (int)Attributes);
             offset += sizeof(int);
 
-            byteBlock.Set(offset, LastWriteTime.Ticks);
+            dataBlock.Set(offset, LastWriteTime.Ticks);
             offset += sizeof(long);
 
-            byteBlock.Set(offset, CreationTime.Ticks);
+            dataBlock.Set(offset, CreationTime.Ticks);
             offset += sizeof(long);
 
-            byteBlock.Set(offset, LastAccessTime.Ticks);
+            dataBlock.Set(offset, LastAccessTime.Ticks);
             offset += sizeof(long);
 
-            byteBlock.Set(offset, Owner);
+            dataBlock.Set(offset, Owner);
             offset += Constants.SecurityIdentifierLength;
 
-            byteBlock.Set(offset, Group);
+            dataBlock.Set(offset, Group);
         }
 
-        protected FileSystemObject(ByteBlock byteBlock, int offset) {
-            int id = byteBlock.ToInt32(offset);
+        protected FileSystemObject(DataBlock dataBlock, int offset) {
+            int id = dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            int nameLength = byteBlock.ToByte(offset);
+            int nameLength = dataBlock.ToByte(offset);
             offset += sizeof(byte);
 
-            string name = byteBlock.ToString(offset, nameLength);
+            string name = dataBlock.ToString(offset, nameLength);
             offset += Constants.MaximumNameLength * sizeof(char);
 
-            int parentID = byteBlock.ToInt32(offset);
+            int parentID = dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            FileAttributes attributes = (FileAttributes)byteBlock.ToInt32(offset);
+            FileAttributes attributes = (FileAttributes)dataBlock.ToInt32(offset);
             offset += sizeof(int);
 
-            DateTime lastWriteTime = new DateTime(byteBlock.ToInt64(offset));
+            DateTime lastWriteTime = new DateTime(dataBlock.ToInt64(offset));
             offset += sizeof(long);
 
-            DateTime creationTime = new DateTime(byteBlock.ToInt64(offset));
+            DateTime creationTime = new DateTime(dataBlock.ToInt64(offset));
             offset += sizeof(long);
 
-            DateTime lastAccessTime = new DateTime(byteBlock.ToInt64(offset));
+            DateTime lastAccessTime = new DateTime(dataBlock.ToInt64(offset));
             offset += sizeof(long);
 
-            SecurityIdentifier owner = byteBlock.ToSecurityIdentifier(offset);
+            SecurityIdentifier owner = dataBlock.ToSecurityIdentifier(offset);
             offset += Constants.SecurityIdentifierLength;
 
-            SecurityIdentifier group = byteBlock.ToSecurityIdentifier(offset);
+            SecurityIdentifier group = dataBlock.ToSecurityIdentifier(offset);
             offset += Constants.SecurityIdentifierLength;
 
             _id = id;
