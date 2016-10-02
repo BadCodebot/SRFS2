@@ -9,9 +9,7 @@ namespace SRFS.Model.Data {
 
         public Signature() : base(new byte[Length], 0, Length) { }
 
-        public Signature(byte[] bytes, int offset = 0) : base(bytes, offset, Length) {
-            if (bytes.Length != Length) throw new ArgumentException($"Unexpected signature size: {bytes.Length} (expected {Length}).");
-        }
+        public Signature(byte[] bytes, int offset = 0) : base(bytes, offset, Length) { }
 
         public Signature(CngKey key, byte[] data, int offset, int count) : this() {
             using (var dsa = new ECDsaCng(key)) {
