@@ -12,10 +12,8 @@ namespace SRFS.Model {
         // Public
         #region Constructors 
 
-        public ClusterTable(IEnumerable<ArrayCluster<T>> clusters, int sizeOfElement) {
+        public ClusterTable(IEnumerable<ArrayCluster<T>> clusters) {
             _clusters = clusters.ToList();
-            _sizeOfElement = sizeOfElement;
-            _elementsPerCluster = ArrayCluster.CalculateElementCount(sizeOfElement);
 
             _isModified = new List<bool>();
 
@@ -68,6 +66,8 @@ namespace SRFS.Model {
         }
 
         public void AddCluster(ArrayCluster<T> cluster) {
+            // Check that they are all the same size?
+
             if (_clusters.Count != 0) {
                 _clusters[_clusters.Count - 1].NextClusterAddress = cluster.Address;
                 _isModified[_isModified.Count - 1] = true;
@@ -95,7 +95,7 @@ namespace SRFS.Model {
         public IEnumerator<T> GetEnumerator() {
             int n = 0;
             for (int i = 0; i < _clusters.Count; i++) {
-                for (int j = 0; j < _elementsPerCluster && n < Count; j++, n++) {
+                for (int j = 0; j < _clusters[0].Count && n < Count; j++, n++) {
                     yield return _clusters[i][j];
                 }
             }
@@ -105,7 +105,7 @@ namespace SRFS.Model {
             return GetEnumerator();
         }
 
-        public int Count => _clusters.Count * _elementsPerCluster;
+        public int Count => _clusters.Count == 0 ? 0 : _clusters.Count * _clusters[0].Count;
 
         #endregion
 
@@ -114,7 +114,7 @@ namespace SRFS.Model {
 
         private (int cluster, int offset) GetIndexLocation(int index) {
             if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
-            return (index / _elementsPerCluster, index % _elementsPerCluster);
+            return (index / _clusters[0].Count, index % _clusters[0].Count);
         }
 
         #endregion
@@ -122,10 +122,6 @@ namespace SRFS.Model {
 
         private readonly List<ArrayCluster<T>> _clusters;
         private readonly List<bool> _isModified;
-
-        private readonly int _sizeOfElement;
-
-        private readonly int _elementsPerCluster;
 
         #endregion
     }
