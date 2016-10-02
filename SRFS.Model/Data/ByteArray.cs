@@ -12,7 +12,7 @@ namespace SRFS.Model.Data {
             if (offset + length > bytes.Length) throw new ArgumentException();
 
             _bytes = new byte[length];
-            Buffer.BlockCopy(bytes, 0, _bytes, offset, length);
+            Buffer.BlockCopy(bytes, offset, _bytes, 0, length);
         }
 
         public override string ToString() {
