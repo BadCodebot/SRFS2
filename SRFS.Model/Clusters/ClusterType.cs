@@ -15,6 +15,6 @@ namespace SRFS.Model.Clusters {
         AccessRulesTable,
         AuditRulesTable,
         FileHeader,
-        FileBody
+        FileData
     }
 }
