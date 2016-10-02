@@ -15,13 +15,13 @@ namespace SRFS.Model.Data {
             _firstCluster = Constants.NoAddress;
         }
 
-        public File(ByteBlock byteBlock, int offset) : base(byteBlock, offset) {
+        public File(DataBlock dataBlock, int offset) : base(dataBlock, offset) {
             offset += FileSystemEntryStorageLength;
 
-            _length = byteBlock.ToInt64(offset);
+            _length = dataBlock.ToInt64(offset);
             offset += sizeof(long);
 
-            _firstCluster = byteBlock.ToInt32(offset);
+            _firstCluster = dataBlock.ToInt32(offset);
         }
 
         public override bool Equals(object obj) {
@@ -39,14 +39,14 @@ namespace SRFS.Model.Data {
                 _firstCluster == other._firstCluster;
         }
 
-        public override void Save(ByteBlock byteBlock, int offset) {
-            base.Save(byteBlock, offset);
+        public override void Save(DataBlock dataBlock, int offset) {
+            base.Save(dataBlock, offset);
             offset += FileSystemEntryStorageLength;
 
-            byteBlock.Set(offset, _length);
+            dataBlock.Set(offset, _length);
             offset += sizeof(long);
 
-            byteBlock.Set(offset, _firstCluster);
+            dataBlock.Set(offset, _firstCluster);
         }
 
         public long Length {
