@@ -26,11 +26,10 @@ namespace SRFS.Model.Clusters {
 
         public int NextClusterAddress {
             get {
-                return base.Data.ToInt32(Offset_NextCluster);
+                return base.OpenBlock.ToInt32(Offset_NextCluster);
             }
             set {
-                base.Data.Set(Offset_NextCluster, value);
-                IsModified = true;
+                base.OpenBlock.Set(Offset_NextCluster, value);
             }
         }
 
@@ -52,7 +51,7 @@ namespace SRFS.Model.Clusters {
         #region Constructors
 
         protected ArrayCluster() : base(Configuration.Geometry.BytesPerCluster) {
-            _data = new ByteBlock(base.Data, Offset_Data, base.Data.Length - Offset_Data);
+            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
             NextClusterAddress = Constants.NoAddress;
             _address = Constants.NoAddress;
         }
@@ -66,7 +65,7 @@ namespace SRFS.Model.Clusters {
             }
         }
 
-        protected new ByteBlock Data => _data;
+        protected new DataBlock OpenBlock => _data;
 
         #endregion
 
@@ -80,7 +79,7 @@ namespace SRFS.Model.Clusters {
 
         private int _address;
 
-        private ByteBlock _data;
+        private DataBlock _data;
 
         #endregion
     }
@@ -93,12 +92,11 @@ namespace SRFS.Model.Clusters {
         public T this[int index] {
             get {
                 if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
-                return ReadElement(base.Data, index * _elementSize);
+                return ReadElement(base.OpenBlock, index * _elementSize);
             }
             set {
                 if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
-                WriteElement(value, base.Data, index * _elementSize);
-                IsModified = true;
+                WriteElement(value, base.OpenBlock, index * _elementSize);
             }
         }
 
@@ -117,9 +115,9 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Methods
 
-        protected abstract void WriteElement(T value, ByteBlock byteBlock, int offset);
+        protected abstract void WriteElement(T value, DataBlock byteBlock, int offset);
 
-        protected abstract T ReadElement(ByteBlock byteBlock, int offset);
+        protected abstract T ReadElement(DataBlock byteBlock, int offset);
 
         public IEnumerator<T> GetEnumerator() {
             for (int i = 0; i < _count; i++) yield return this[i];
