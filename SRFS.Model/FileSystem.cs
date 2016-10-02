@@ -84,7 +84,7 @@ namespace SRFS.Model {
 
             _clusterStateTable = new ClusterTable<ClusterState>(
                 (from n in Enumerable.Range(0, clusterCount)
-                 select new ClusterStatesCluster() { Address = n, Type = ClusterType.ClusterStateTable }),
+                 select new ClusterStatesCluster() { Address = n }),
                 sizeof(byte));
 
             // Next Cluster Address Table
@@ -108,31 +108,31 @@ namespace SRFS.Model {
             // Verify Time Table
             _verifyTimeTable = new ClusterTable<DateTime>(
                 (from n in Enumerable.Range(_bytesUsedTable.Clusters.Last().Address + 1, clusterCount)
-                 select new VerifyTimesCluster() { Address = n, Type = ClusterType.VerifyTimeTable }),
+                 select new VerifyTimesCluster() { Address = n }),
                 sizeof(long));
 
             // Directory Table
             _directoryTable = new ClusterTable<DirectoryEntry>(
-                new DirectoryEntryCluster[] { new DirectoryEntryCluster(this) {
-                    Address = _verifyTimeTable.Clusters.Last().Address + 1, Type = ClusterType.DirectoryTable } },
+                new DirectoryEntryCluster[] { new DirectoryEntryCluster() {
+                    Address = _verifyTimeTable.Clusters.Last().Address + 1 } },
                 DirectoryEntryCluster.ElementLength);
 
             // File Table
             _fileTable = new ClusterTable<FileEntry>(
-                new FileEntryCluster[] { new FileEntryCluster(this) {
-                    Address = _directoryTable.Clusters.Last().Address + 1, Type = ClusterType.FileTable } },
+                new FileEntryCluster[] { new FileEntryCluster() {
+                    Address = _directoryTable.Clusters.Last().Address + 1 } },
                 FileEntryCluster.ElementLength);
 
             // Access Rules Table
             _accessRules = new ClusterTable<FileSystemAccessRuleData>(
                 new AccessRuleCluster[] { new AccessRuleCluster() {
-                    Address = _fileTable.Clusters.Last().Address + 1, Type = ClusterType.AccessRulesTable } },
+                    Address = _fileTable.Clusters.Last().Address + 1 } },
                 AccessRuleCluster.EntryLength);
 
             // Audit Rules Table
             _auditRules = new ClusterTable<FileSystemAuditRuleData>(
                 new AuditRuleCluster[] { new AuditRuleCluster() {
-                    Address = _accessRules.Clusters.Last().Address + 1, Type = ClusterType.AuditRulesTable } },
+                    Address = _accessRules.Clusters.Last().Address + 1 } },
                 AuditRuleCluster.EntryLength);
 
             // Initialize the tables
@@ -165,8 +165,10 @@ namespace SRFS.Model {
 
             // Create the root directory
             DirectoryEntry dir = CreateDirectory(null, "");
-            dir.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
-                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+            AddAccessRule(dir, 
+                new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
+                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, 
+                AccessControlType.Allow));
 
             Flush();
         }
@@ -191,7 +193,7 @@ namespace SRFS.Model {
 
             _clusterStateTable = new ClusterTable<ClusterState>(
                 (from n in Enumerable.Range(0, clusterCount)
-                 select new ClusterStatesCluster() { Address = n, Type = ClusterType.ClusterStateTable }),
+                 select new ClusterStatesCluster() { Address = n }),
                 sizeof(byte));
             _clusterStateTable.Load(_blockIO);
 
@@ -218,21 +220,21 @@ namespace SRFS.Model {
             // Verify Time Table
             _verifyTimeTable = new ClusterTable<DateTime>(
                 (from n in Enumerable.Range(_bytesUsedTable.Clusters.Last().Address + 1, clusterCount)
-                 select new VerifyTimesCluster() { Address = n, Type = ClusterType.VerifyTimeTable }),
+                 select new VerifyTimesCluster() { Address = n }),
                 sizeof(long));
             _verifyTimeTable.Load(_blockIO);
 
             // Directory Table
             _directoryTable = new ClusterTable<DirectoryEntry>(
                 from n in getClusterChain(_verifyTimeTable.Clusters.Last().Address + 1)
-                select new DirectoryEntryCluster(this) { Address = n },
+                select new DirectoryEntryCluster() { Address = n },
                 DirectoryEntryCluster.ElementLength);
             _directoryTable.Load(_blockIO);
 
             // File Table
             _fileTable = new ClusterTable<FileEntry>(
                 from n in getClusterChain(_directoryTable.Clusters.First().Address + 1)
-                select new FileEntryCluster(this) { Address = n },
+                select new FileEntryCluster() { Address = n },
                 FileEntryCluster.ElementLength);
             _fileTable.Load(_blockIO);
 
@@ -333,11 +335,11 @@ namespace SRFS.Model {
             if (parent == null && _directoryIndex.Count != 0) throw new ArgumentException();
 
             if (parent != null) {
-                if (parent.SubDirectories.ContainsKey(name)) throw new ArgumentException();
-                if (parent.Files.ContainsKey(name)) throw new ArgumentException();
+                if (GetContainedDirectories(parent).ContainsKey(name)) throw new ArgumentException();
+                if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
             }
 
-            DirectoryEntry dir = new DirectoryEntry(this, _nextEntryID++, name);
+            DirectoryEntry dir = new DirectoryEntry(_nextEntryID++, name);
             if (parent != null) _containedDirectoriesIndex[parent.ID].Add(name, dir);
             int index = getFreeDirectoryIndex();
             _directoryTable[index] = dir;
@@ -526,19 +528,19 @@ namespace SRFS.Model {
         #region Private Fields
 
         private int getFreeDirectoryIndex() {
-            return getFreeIndex(ref _nextDirectoryIndex, _directoryTable, n => new DirectoryEntryCluster(this) { Address = n, Type = ClusterType.DirectoryTable });
+            return getFreeIndex(ref _nextDirectoryIndex, _directoryTable, n => new DirectoryEntryCluster() { Address = n });
         }
 
         private int getFreeFileIndex() {
-            return getFreeIndex(ref _nextFileIndex, _fileTable, n => new FileEntryCluster(this) { Address = n, Type = ClusterType.FileTable });
+            return getFreeIndex(ref _nextFileIndex, _fileTable, n => new FileEntryCluster() { Address = n });
         }
 
         private int getFreeAccessRuleIndex() {
-            return getFreeIndex(ref _nextAccessRuleIndex, _accessRules, n => new AccessRuleCluster() { Address = n, Type = ClusterType.AccessRulesTable });
+            return getFreeIndex(ref _nextAccessRuleIndex, _accessRules, n => new AccessRuleCluster() { Address = n });
         }
 
         private int getFreeAuditRuleIndex() {
-            return getFreeIndex(ref _nextAuditRuleIndex, _auditRules, n => new AuditRuleCluster() { Address = n, Type = ClusterType.AuditRulesTable });
+            return getFreeIndex(ref _nextAuditRuleIndex, _auditRules, n => new AuditRuleCluster() { Address = n });
         }
 
         private int getFreeIndex<T>(ref int nextIndex, ClusterTable<T> table, Func<int, ArrayCluster<T>> clusterFactory) {
