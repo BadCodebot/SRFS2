@@ -9,9 +9,9 @@ using System.Diagnostics;
 
 namespace SRFS.Model.Data {
 
-    public class FileSystemEntry : INotifyPropertyChanged {
+    public class FileSystemObject : INotifyPropertyChanged {
 
-        protected FileSystemEntry(int id, string name) {
+        protected FileSystemObject(int id, string name) {
             _id = id;
             _name = name;
             _parentID = Constants.NoID;
@@ -117,7 +117,7 @@ namespace SRFS.Model.Data {
             PropertyChanged(this, new PropertyChangedEventArgs(name));
         }
 
-        protected bool Equals(FileSystemEntry other) {
+        protected bool Equals(FileSystemObject other) {
             return _id == other._id
                 && StringComparer.OrdinalIgnoreCase.Compare(_name, other._name) == 0
                 && _parentID == other._parentID
@@ -175,7 +175,7 @@ namespace SRFS.Model.Data {
             byteBlock.Set(offset, Group);
         }
 
-        protected FileSystemEntry(ByteBlock byteBlock, int offset) {
+        protected FileSystemObject(ByteBlock byteBlock, int offset) {
             int id = byteBlock.ToInt32(offset);
             offset += sizeof(int);
 
