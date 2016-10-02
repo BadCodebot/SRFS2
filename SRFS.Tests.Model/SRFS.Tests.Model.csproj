@@ -56,6 +56,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ByteBlockTests.cs" />
+    <Compile Include="Clusters\FileDataClusterTests.cs" />
+    <Compile Include="Clusters\FileHeaderClusterTests.cs" />
     <Compile Include="Clusters\ObjectArrayClusterTests.cs" />
     <Compile Include="Clusters\VerifyTimesClusterTests.cs" />
     <Compile Include="Clusters\IntArrayClusterTests.cs" />
