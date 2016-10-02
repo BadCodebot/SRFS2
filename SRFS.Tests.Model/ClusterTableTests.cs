@@ -14,7 +14,7 @@ namespace SRFS.Tests.Model {
     [TestClass]
     public class ClusterTableTests {
 
-        private int verifyProperties(ByteBlock b, ClusterType expectedType, int expectedNextClusterAddress) {
+        private int verifyProperties(DataBlock b, ClusterType expectedType, int expectedNextClusterAddress) {
 
             int offset = 0;
 
@@ -74,13 +74,13 @@ namespace SRFS.Tests.Model {
 
                 // Check that the cluster is written and everything is zeroed
 
-                ByteBlock b = new ByteBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                DataBlock b = new DataBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 int offset = verifyProperties( b, ClusterType.BytesUsedTable, 4);
                 for (int i = 0; i < ArrayCluster.CalculateElementCount(sizeof(int)); i++) {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), 0);
                 }
 
-                b = new ByteBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                b = new DataBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 offset = verifyProperties( b, ClusterType.BytesUsedTable, Constants.NoAddress);
                 for (int i = 0; i < ArrayCluster.CalculateElementCount(sizeof(int)); i++) {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), 0);
@@ -94,14 +94,14 @@ namespace SRFS.Tests.Model {
                 for (int i = 0; i < ct.Count; i++) ct[i] = r.Next();
                 ct.Flush(io);
 
-                b = new ByteBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                b = new DataBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 offset = verifyProperties(b, ClusterType.BytesUsedTable, 4);
                 int index = 0;
                 for (int i = 0; i < ArrayCluster.CalculateElementCount(sizeof(int)); i++, index++) {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), ct[index]);
                 }
 
-                b = new ByteBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                b = new DataBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 offset = verifyProperties(b, ClusterType.BytesUsedTable, Constants.NoAddress);
                 for (int i = 0; i < ArrayCluster.CalculateElementCount(sizeof(int)); i++, index++) {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), ct[index]);
@@ -118,11 +118,11 @@ namespace SRFS.Tests.Model {
                 ct.Flush(io);
 
                 // Make sure that next cluster is updated
-                b = new ByteBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                b = new DataBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 verifyProperties(b, ClusterType.BytesUsedTable, 7);
 
                 // check the new cluster and assure everything is zero
-                b = new ByteBlock(io.Bytes, 7 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                b = new DataBlock(io.Bytes, 7 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 offset = verifyProperties(b, ClusterType.BytesUsedTable, Constants.NoAddress);
                 for (int i = 0; i < ArrayCluster.CalculateElementCount(sizeof(int)); i++) {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), 0);
@@ -140,7 +140,7 @@ namespace SRFS.Tests.Model {
                 ct.Flush(io);
 
                 // Make sure that the last cluster is updated
-                b = new ByteBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                b = new DataBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 verifyProperties(b, ClusterType.BytesUsedTable, Constants.NoAddress);
             }
         }

@@ -17,7 +17,7 @@ namespace SRFS.Tests.Model.Clusters {
     [TestClass]
     public class ObjectArrayClusterTests {
 
-        private int verifyProperties(ByteBlock b, int offset, ClusterType type) {
+        private int verifyProperties(DataBlock b, int offset, ClusterType type) {
 
             byte[] marker = b.ToByteArray(offset, Constants.SrfsMarker.Length);
             Assert.IsTrue(marker.SequenceEqual(Constants.SrfsMarker));
@@ -100,7 +100,7 @@ namespace SRFS.Tests.Model.Clusters {
         }
 
         private void saveLoadTest<T>(Func<ObjectArrayCluster<T>> clusterFactory, Func<int, T> elementFactory,
-            Func<ByteBlock, int, T> elementReader, int elementLength) where T : class {
+            Func<DataBlock, int, T> elementReader, int elementLength) where T : class {
 
             ConfigurationTest.Initialize();
 
@@ -114,7 +114,7 @@ namespace SRFS.Tests.Model.Clusters {
                 csc.Save(io);
 
                 int offset = 0;
-                ByteBlock b = new ByteBlock(io.Bytes,
+                DataBlock b = new DataBlock(io.Bytes,
                     Address * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
 
                 offset = verifyProperties(b, offset, csc.Type);

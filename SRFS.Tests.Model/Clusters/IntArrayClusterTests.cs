@@ -30,7 +30,7 @@ namespace SRFS.Tests.Model.Clusters {
                 csc.Save(io);
 
                 int offset = 0;
-                ByteBlock b = new ByteBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
+                DataBlock b = new DataBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
 
                 byte[] marker = b.ToByteArray(offset, Constants.SrfsMarker.Length);
                 Assert.IsTrue(marker.SequenceEqual(Constants.SrfsMarker));
