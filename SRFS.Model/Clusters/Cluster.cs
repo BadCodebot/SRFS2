@@ -3,6 +3,7 @@ using SRFS.Model.Data;
 using System;
 using System.IO;
 using System.Security.Cryptography;
+using System.ComponentModel;
 
 namespace SRFS.Model.Clusters {
 
@@ -16,11 +17,11 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public Cluster(int clusterSize) {
+        protected Cluster(int clusterSize) {
             if (clusterSize < HeaderLength) throw new ArgumentOutOfRangeException();
 
             _data = new byte[clusterSize];
-            _openBlock = new DataBlock(_data, HeaderLength, Configuration.Geometry.BytesPerCluster - HeaderLength);
+            _openBlock = new DataBlock(_data, HeaderLength, clusterSize - HeaderLength);
             _openBlock.Changed += changedHandler;
 
             Marker = Constants.SrfsMarker;
@@ -30,12 +31,23 @@ namespace SRFS.Model.Clusters {
             _isModified = true;
         }
 
+        protected Cluster(Cluster c) {
+            _data = new byte[c._data.Length];
+            _openBlock = new DataBlock(_data, HeaderLength, _data.Length - HeaderLength);
+            _openBlock.Changed += changedHandler;
+
+            Buffer.BlockCopy(c._data, 0, _data, 0, _data.Length);
+            _isModified = c._isModified;
+        }
+
         static Cluster() {
             _headerLength = Offset_ClusterType + Length_ClusterType;
         }
 
         #endregion
         #region Properties
+
+        public int SizeBytes => _data.Length;
 
         public static int HeaderLength => _headerLength;
 
@@ -97,12 +109,10 @@ namespace SRFS.Model.Clusters {
             _isModified = true;
         }
 
-        public virtual void Clear() {
-            Array.Clear(_data, 0, _data.Length);
+        public virtual void Initialize() {
             Marker = Constants.SrfsMarker;
             Version = Constants.CurrentVersion;
             ID = Configuration.FileSystemID;
-            Type = ClusterType.None;
             _isModified = true;
         }
 
@@ -139,10 +149,12 @@ namespace SRFS.Model.Clusters {
                 0, _data, Offset_Signature, Signature.Length);
         }
 
-        public virtual void Load(IBlockIO io) {
-            if (_data.Length % io.BlockSizeBytes != 0) throw new ArgumentException();
+        public virtual void Load(byte[] bytes, int offset) {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (_data.Length + offset > bytes.Length) throw new ArgumentException();
 
-            io.Read(AbsoluteAddress, _data, 0, _data.Length);
+            Buffer.BlockCopy(bytes, offset, _data, 0, _data.Length);
             if (!IsMarkerValid()) throw new ArgumentException("Invalid Cluster Marker");
             if (!IsVersionCompatible()) throw new ArgumentException("Unsupported version");
             if (Configuration.Options.VerifyClusterHashes() && !IsHashValid()) throw new IOException("Cluster has invalid hash");
@@ -150,15 +162,17 @@ namespace SRFS.Model.Clusters {
             _isModified = false;
         }
 
-        public virtual void Save(IBlockIO io) {
-            if (_data.Length % io.BlockSizeBytes != 0) throw new ArgumentException();
+        public virtual void Save(byte[] bytes, int offset) {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (_data.Length + offset > bytes.Length) throw new ArgumentException();
 
             if (_isModified) {
                 UpdateHash();
                 UpdateSignature();
                 _isModified = false;
             }
-            io.Write(AbsoluteAddress, _data, 0, _data.Length);
+            Buffer.BlockCopy(_data, 0, bytes, offset, _data.Length);
         }
 
         #endregion
@@ -166,7 +180,7 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Properties
 
-        protected abstract long AbsoluteAddress { get; }
+        public abstract long AbsoluteAddress { get; }
 
         protected virtual DataBlock OpenBlock => _openBlock;
 
