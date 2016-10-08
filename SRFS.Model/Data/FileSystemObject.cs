@@ -9,7 +9,7 @@ using System.Diagnostics;
 
 namespace SRFS.Model.Data {
 
-    public class FileSystemObject : INotifyPropertyChanged {
+    public class FileSystemObject : INotifyPropertyChanged, INotifyChanged {
 
         protected FileSystemObject(int id, string name) {
             _id = id;
@@ -25,6 +25,7 @@ namespace SRFS.Model.Data {
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+        public event ChangedEventHandler Changed;
 
         public int ID => _id;
 
@@ -32,10 +33,10 @@ namespace SRFS.Model.Data {
             get {
                 lock (_lock) return _name;
             }
-            set {
+            private set {
                 if (value == null) throw new ArgumentNullException(nameof(value));
                 if (value.Length > Constants.MaximumNameLength) throw new ArgumentException();
-                lock (_lock) _name = value;
+                _name = value;
                 NotifyPropertyChanged();
             }
         }
@@ -113,8 +114,8 @@ namespace SRFS.Model.Data {
         }
 
         protected void NotifyPropertyChanged([CallerMemberName] string name = "") {
-            if (PropertyChanged == null) return;
-            PropertyChanged(this, new PropertyChangedEventArgs(name));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            Changed?.Invoke(this);
         }
 
         protected bool Equals(FileSystemObject other) {
