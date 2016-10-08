@@ -5,6 +5,15 @@ namespace SRFS.Model {
 
     public static class Configuration {
 
+        public static void Reset() {
+            _partition = null;
+            _options = null;
+            _cryptoSettings = null;
+            _fileSystemID = null;
+            _geometry = null;
+            _volumeName = null;
+        }
+
         public static Geometry Geometry {
             get {
                 if (!IsGeometryInitialized) throw new InvalidOperationException();
@@ -37,7 +46,7 @@ namespace SRFS.Model {
                 _cryptoSettings = value;
             }
         }
-        
+
         public static Options Options {
             get {
                 if (!IsOptionsInitialized) throw new InvalidOperationException();
