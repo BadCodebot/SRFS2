@@ -4,12 +4,16 @@ using FileAttributes = System.IO.FileAttributes;
 
 namespace SRFS.Model.Data {
 
-    public sealed class Directory : FileSystemObject, IEquatable<Directory> {
+    public class Directory : FileSystemObject, IEquatable<Directory> {
 
         public const int StorageLength = FileSystemEntryStorageLength;
 
-        public static ObjectArrayCluster<Directory> CreateArrayCluster(int address) => new ObjectArrayCluster<Directory>(ClusterType.DirectoryTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new Directory(block, offset)) { Address = address };
+        public static ObjectArrayCluster<Directory> CreateArrayCluster(int address) => 
+            new ObjectArrayCluster<Directory>(
+                address,
+                ClusterType.DirectoryTable,
+                StorageLength, (block, offset, value) => value.Save(block, offset), 
+                (block, offset) => new Directory(block, offset));
 
         public Directory(int id, string name) : base(id, name) {
             Attributes = FileAttributes.Normal;
@@ -27,7 +31,7 @@ namespace SRFS.Model.Data {
         }
 
         public override bool Equals(object obj) {
-            if (obj is Directory) return Equals((Directory)obj);
+            if (obj is Directory dir) return Equals(dir);
             return false;
         }
 
