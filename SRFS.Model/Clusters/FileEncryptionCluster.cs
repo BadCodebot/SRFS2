@@ -5,7 +5,7 @@ using System;
 
 namespace SRFS.Model.Clusters {
 
-    public class FileCluster : FileSystemCluster {
+    public class FileEncryptionCluster : FileBaseCluster {
 
         // Public
         #region Methods
@@ -16,13 +16,13 @@ namespace SRFS.Model.Clusters {
         #region Constructors
 
         public static int CalculateHeaderLength(int additionalHeaderLength) {
-            int header = FileSystemCluster.HeaderLength + additionalHeaderLength + Length_KeyThumbprint + Length_PublicKey;
+            int header = FileBaseCluster.HeaderLength + additionalHeaderLength + Length_KeyThumbprint + Length_PublicKey;
             int availableDataSize = Configuration.Geometry.BytesPerCluster - header;
             int paddingLength = availableDataSize % 16;
             return header + paddingLength;
         }
 
-        protected FileCluster(int offset) : base() {
+        protected FileEncryptionCluster(int address, int offset) : base(address) {
             _keyThumbprintOffset = offset;
             _publicKeyOffset = _keyThumbprintOffset + Length_KeyThumbprint;
 
@@ -36,6 +36,21 @@ namespace SRFS.Model.Clusters {
             _data = new DataBlock(_dataBytes);
             _data.Changed += dataChanged;
             _isDataModified = true;
+
+            // Check to see that there is room for encrypted data?
+        }
+
+        protected FileEncryptionCluster(FileEncryptionCluster c) : base(c) {
+            _keyThumbprintOffset = c._keyThumbprintOffset;
+            _publicKeyOffset = c._publicKeyOffset;
+
+            _dataOffset = c._dataOffset;
+
+            _dataBytes = new byte[c._dataBytes.Length];
+            Buffer.BlockCopy(c._dataBytes, 0, _dataBytes, 0, _dataBytes.Length);
+            _data = new DataBlock(_dataBytes);
+            _data.Changed += dataChanged;
+            _isDataModified = c._isDataModified;
 
             // Check to see that there is room for encrypted data?
         }
@@ -55,7 +70,7 @@ namespace SRFS.Model.Clusters {
             return dataOffset + (16 - dataOffset % 16 + bytesPerCluster % 16) % 16;
         }
 
-        public override void Save(IBlockIO io) {
+        public override void Save(byte[] bytes, int offset) {
             if (_isDataModified) {
                 base.OpenBlock.Set(_keyThumbprintOffset, Configuration.CryptoSettings.EncryptionKeyThumbprint.Bytes);
 
@@ -76,11 +91,11 @@ namespace SRFS.Model.Clusters {
                 }
             }
 
-            base.Save(io);
+            base.Save(bytes, offset);
         }
 
-        public override void Load(IBlockIO io) {
-            base.Load(io);
+        public override void Load(byte[] bytes, int offset) {
+            base.Load(bytes, offset);
 
             if (!new KeyThumbprint(base.OpenBlock.ToByteArray(_keyThumbprintOffset, KeyThumbprint.Length)).Equals(
                 Configuration.CryptoSettings.DecryptionKeyThumbprint)) throw new System.IO.IOException();
@@ -119,7 +134,7 @@ namespace SRFS.Model.Clusters {
         private readonly int _publicKeyOffset;
         private static readonly int Length_PublicKey = PublicKey.Length;
 
-        public DataBlock Data => _data;
+        public override DataBlock Data => _data;
 
         private byte[] _dataBytes;
         private DataBlock _data;
