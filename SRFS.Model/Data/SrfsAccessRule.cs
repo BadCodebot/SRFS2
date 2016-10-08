@@ -16,6 +16,20 @@ namespace SRFS.Model.Data {
             _accessRule = rule;
         }
 
+        public SrfsAccessRule(Directory dir, FileSystemAccessRule rule) {
+
+            _type = FileSystemObjectType.Directory;
+            _id = dir.ID;
+            _accessRule = rule;
+        }
+
+        public SrfsAccessRule(File file, FileSystemAccessRule rule) {
+
+            _type = FileSystemObjectType.File;
+            _id = file.ID;
+            _accessRule = rule;
+        }
+
         public SrfsAccessRule(DataBlock dataBlock, int offset) {
             _type = (FileSystemObjectType)dataBlock.ToByte(offset);
             offset += sizeof(byte);
@@ -59,8 +73,8 @@ namespace SRFS.Model.Data {
         #endregion
         #region Methods
 
-        public static ObjectArrayCluster<SrfsAccessRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAccessRule>(ClusterType.AccessRulesTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAccessRule(block, offset)) { Address = address };
+        public static ObjectArrayCluster<SrfsAccessRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAccessRule>(address, ClusterType.AccessRulesTable,
+            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAccessRule(block, offset));
 
         public void Save(DataBlock dataBlock, int offset) {
             dataBlock.Set(offset, (byte)_type);

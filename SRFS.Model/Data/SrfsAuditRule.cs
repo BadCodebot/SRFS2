@@ -7,12 +7,26 @@ namespace SRFS.Model.Data {
 
     public class SrfsAuditRule : IEquatable<SrfsAuditRule> {
 
-        public static ObjectArrayCluster<SrfsAuditRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAuditRule>(ClusterType.AuditRulesTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAuditRule(block, offset)) { Address = address };
+        public static ObjectArrayCluster<SrfsAuditRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAuditRule>(address, ClusterType.AuditRulesTable,
+            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAuditRule(block, offset));
 
         public SrfsAuditRule(FileSystemObjectType type, int id, FileSystemAuditRule rule) {
             _type = type;
             _id = id;
+            _auditRule = rule;
+        }
+
+        public SrfsAuditRule(Directory dir, FileSystemAuditRule rule) {
+
+            _type = FileSystemObjectType.Directory;
+            _id = dir.ID;
+            _auditRule = rule;
+        }
+
+        public SrfsAuditRule(File file, FileSystemAuditRule rule) {
+
+            _type = FileSystemObjectType.File;
+            _id = file.ID;
             _auditRule = rule;
         }
 
