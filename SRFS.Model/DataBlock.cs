@@ -78,12 +78,33 @@ namespace SRFS.Model {
             return r;
         }
 
+        public void ToByteArray(int offset, byte[] destination, int destinationOffset, int count) {
+            if (offset + count > _length) throw new ArgumentException();
+            if (destinationOffset + count > destination.Length) throw new ArgumentException();
+
+            Buffer.BlockCopy(_block, _offset + offset, destination, destinationOffset, count);
+        }
+
         public void Set(int offset, byte[] b) {
             if (offset + b.Length > _length) throw new ArgumentException();
             Buffer.BlockCopy(b, 0, _block, _offset + offset, b.Length);
             notifyChanged();
         }
 
+        public void Set(int offset, byte[] b, int sourceOffset, int count) {
+            if (offset + count > _length) throw new ArgumentException();
+            if (sourceOffset + count > b.Length) throw new ArgumentException();
+
+            Buffer.BlockCopy(b, sourceOffset, _block, _offset + offset, count);
+            notifyChanged();
+        }
+
+        public void Set(int offset, DataBlock source, int sourceOffset, int count) {
+            if (offset + count > _length) throw new ArgumentException();
+            if (sourceOffset + count > source._length) throw new ArgumentException();
+            Buffer.BlockCopy(source._block, source._offset + sourceOffset, _block, _offset + offset, count);
+            notifyChanged();
+        }
 
         public int ToInt32(int offset) => BitConverter.ToInt32(_block, offset + _offset);
 
