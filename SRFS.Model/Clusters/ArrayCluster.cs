@@ -21,7 +21,6 @@ namespace SRFS.Model.Clusters {
 
         public int Address {
             get { return _address; }
-            set { _address = value; }
         }
 
         public int NextClusterAddress {
@@ -40,8 +39,8 @@ namespace SRFS.Model.Clusters {
             return (Configuration.Geometry.BytesPerCluster - HeaderLength) / elementSize;
         }
 
-        public override void Clear() {
-            base.Clear();
+        public override void Initialize() {
+            base.Initialize();
             NextClusterAddress = Constants.NoAddress;
         }
 
@@ -50,16 +49,22 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Constructors
 
-        protected ArrayCluster() : base(Configuration.Geometry.BytesPerCluster) {
+        protected ArrayCluster(int address) : base(Configuration.Geometry.BytesPerCluster) {
+            if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
             _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
             NextClusterAddress = Constants.NoAddress;
-            _address = Constants.NoAddress;
+            _address = address;
+        }
+
+        protected ArrayCluster(ArrayCluster c) : base(c) {
+            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
+            _address = c._address;
         }
 
         #endregion
         #region Properties
 
-        protected override long AbsoluteAddress {
+        public override long AbsoluteAddress {
             get {
                 return _address == Constants.NoAddress ? Constants.NoAddress : _address * Configuration.Geometry.BytesPerCluster;
             }
@@ -107,9 +112,14 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Constructors
 
-        protected ArrayCluster(int elementSize) : base() {
+        protected ArrayCluster(int address, int elementSize) : base(address) {
             _elementSize = elementSize;
             _count = CalculateElementCount(elementSize);
+        }
+
+        protected ArrayCluster(ArrayCluster<T> c) : base(c) {
+            _elementSize = c._elementSize;
+            _count = c._count;
         }
 
         #endregion
