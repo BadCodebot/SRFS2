@@ -1,13 +1,15 @@
 ﻿namespace SRFS.Model.Clusters {
 
-    public class ClusterStatesCluster : ArrayCluster<ClusterState> {
+    public sealed class ClusterStatesCluster : ArrayCluster<ClusterState> {
 
         // Public
         #region Constructors
 
-        public ClusterStatesCluster() : base(sizeof(ClusterState)) {
+        public ClusterStatesCluster(int address) : base(address, sizeof(ClusterState)) {
             Type = ClusterType.ClusterStateTable;
         }
+
+        public ClusterStatesCluster(ClusterStatesCluster c) : base(c) { }
 
         #endregion
 
