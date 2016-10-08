@@ -19,15 +19,16 @@ namespace SRFS.Tests.Model.Clusters {
         public void IntArraySaveLoadTest() {
             ConfigurationTest.Initialize();
 
-            using (var io = new MemoryIO(30 * 1024 * 1024, 512)) {
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+                SimpleClusterIO cio = new SimpleClusterIO(io);
 
                 Random r = new Random();
-                IntArrayCluster csc = new IntArrayCluster();
+                IntArrayCluster csc = new IntArrayCluster(2);
+                csc.Initialize();
                 for (int i = 0; i < csc.Count; i++) csc[i] = r.Next();
-                csc.Address = 2;
                 csc.NextClusterAddress = Constants.NoAddress;
                 csc.Type = ClusterType.NextClusterAddressTable;
-                csc.Save(io);
+                cio.Save(csc);
 
                 int offset = 0;
                 DataBlock b = new DataBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
@@ -66,9 +67,8 @@ namespace SRFS.Tests.Model.Clusters {
                 for (int i = 0; i < csc.Count; i++) cs[i] = b.ToInt32(offset + i * sizeof(int));
                 Assert.IsTrue(cs.SequenceEqual(csc));
 
-                IntArrayCluster csc2 = new IntArrayCluster();
-                csc2.Address = 2;
-                csc2.Load(io);
+                IntArrayCluster csc2 = new IntArrayCluster(2);
+                cio.Load(csc2);
                 Assert.AreEqual(csc.ID, csc2.ID);
                 Assert.AreEqual(csc.Type, csc2.Type);
                 Assert.AreEqual(csc.NextClusterAddress, csc2.NextClusterAddress);

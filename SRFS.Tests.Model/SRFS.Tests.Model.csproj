@@ -64,6 +64,8 @@
     <Compile Include="Clusters\ClusterStatesClusterTests.cs" />
     <Compile Include="ClusterTableTests.cs" />
     <Compile Include="ConfigurationTest.cs" />
+    <Compile Include="FileIOTests.cs" />
+    <Compile Include="FileSystemTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

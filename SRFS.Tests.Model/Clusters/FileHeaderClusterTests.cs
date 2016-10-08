@@ -22,11 +22,12 @@ namespace SRFS.Tests.Model.Clusters {
         public void FileHeaderSaveLoadTest() {
             ConfigurationTest.Initialize();
 
-            using (var io = new MemoryIO(30 * 1024 * 1024, 512)) {
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+                SimpleClusterIO cio = new SimpleClusterIO(io);
 
                 Random r = new Random(Seed);
-                FileHeaderCluster csc = new FileHeaderCluster();
-                csc.Address = Address;
+                FileHeaderCluster csc = new FileHeaderCluster(Address);
+                csc.Initialize();
 
                 int fileID = r.Next();
                 int nextClusterAddress = r.Next();
@@ -49,7 +50,7 @@ namespace SRFS.Tests.Model.Clusters {
                 for (int i = 0; i < data.Length; i++) data[i] = (byte)(r.Next() & byte.MaxValue);
 
                 csc.Data.Set(0, data);
-                csc.Save(io);
+                cio.Save(csc);
 
                 int offset = 0;
                 DataBlock b = new DataBlock(
@@ -134,9 +135,8 @@ namespace SRFS.Tests.Model.Clusters {
                     }
                 }
 
-                FileHeaderCluster csc2 = new FileHeaderCluster();
-                csc2.Address = Address;
-                csc2.Load(io);
+                FileHeaderCluster csc2 = new FileHeaderCluster(Address);
+                cio.Load(csc2);
 
                 Assert.IsTrue(csc2.Marker.SequenceEqual(Constants.SrfsMarker));
                 Assert.IsTrue(csc2.Version.SequenceEqual(Constants.CurrentVersion));

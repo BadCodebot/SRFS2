@@ -104,14 +104,16 @@ namespace SRFS.Tests.Model.Clusters {
 
             ConfigurationTest.Initialize();
 
-            using (var io = new MemoryIO(30 * Configuration.Geometry.BytesPerCluster, BlockSize)) {
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+                SimpleClusterIO cio = new SimpleClusterIO(io);
 
                 var csc = clusterFactory();
+                csc.Initialize();
 
                 for (int i = 0; i < csc.Count; i++) csc[i] = elementFactory(i);
 
                 csc.NextClusterAddress = NextClusterAddress;
-                csc.Save(io);
+                cio.Save(csc);
 
                 int offset = 0;
                 DataBlock b = new DataBlock(io.Bytes,
@@ -133,8 +135,7 @@ namespace SRFS.Tests.Model.Clusters {
                 Assert.IsTrue(cs.SequenceEqual(csc));
 
                 var csc2 = clusterFactory();
-                csc2.Address = Address;
-                csc2.Load(io);
+                cio.Load(csc2);
                 Assert.AreEqual(csc.ID, csc2.ID);
                 Assert.AreEqual(csc.Type, csc2.Type);
                 Assert.AreEqual(csc.NextClusterAddress, csc2.NextClusterAddress);

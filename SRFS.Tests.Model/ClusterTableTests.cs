@@ -55,22 +55,23 @@ namespace SRFS.Tests.Model {
         public void IntClusterTableTest() {
             ConfigurationTest.Initialize();
 
-            using (var io = new MemoryIO(30 * 1024 * 1024, 512)) {
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+                SimpleClusterIO cio = new SimpleClusterIO(io);
 
                 Random r = new Random();
 
-                ClusterTable<int> ct = new ClusterTable<int>(new IntArrayCluster[] {
-                    new IntArrayCluster() { Address = 2, Type = ClusterType.BytesUsedTable },
-                    new IntArrayCluster() { Address = 4, Type = ClusterType.BytesUsedTable }
-                });
+                ClusterTable<int> ct = new ClusterTable<int>(
+                    new int[] { 2, 4 },
+                    sizeof(int),
+                    (address) => new IntArrayCluster(address) { Type = ClusterType.BytesUsedTable });
 
-                ClusterTable<int> ct2 = new ClusterTable<int>(new IntArrayCluster[] {
-                    new IntArrayCluster() { Address = 2, Type = ClusterType.BytesUsedTable },
-                    new IntArrayCluster() { Address = 4, Type = ClusterType.BytesUsedTable }
-                });
+                ClusterTable<int> ct2 = new ClusterTable<int>(
+                    new int[] { 2, 4 },
+                    sizeof(int),
+                    (address) => new IntArrayCluster(address) { Type = ClusterType.BytesUsedTable });
 
-                ct.Flush(io);
-                ct2.Load(io);
+                ct.Flush(cio);
+                ct2.Load(cio);
 
                 // Check that the cluster is written and everything is zeroed
 
@@ -92,7 +93,7 @@ namespace SRFS.Tests.Model {
 
                 // Now randomize the contents
                 for (int i = 0; i < ct.Count; i++) ct[i] = r.Next();
-                ct.Flush(io);
+                ct.Flush(cio);
 
                 b = new DataBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
                 offset = verifyProperties(b, ClusterType.BytesUsedTable, 4);
@@ -107,15 +108,15 @@ namespace SRFS.Tests.Model {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), ct[index]);
                 }
 
-                ct2.Load(io);
+                ct2.Load(cio);
                 for (int i = 0; i < ct2.Count; i++) {
                     Assert.AreEqual(ct2[i], ct[i]);
                 }
 
                 // Add a cluster
-                ct.AddCluster(new IntArrayCluster() { Address = 7, Type = ClusterType.BytesUsedTable });
-                ct2.AddCluster(new IntArrayCluster() { Address = 7, Type = ClusterType.BytesUsedTable });
-                ct.Flush(io);
+                ct.AddCluster(7);
+                ct2.AddCluster(7);
+                ct.Flush(cio);
 
                 // Make sure that next cluster is updated
                 b = new DataBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
@@ -128,7 +129,7 @@ namespace SRFS.Tests.Model {
                     Assert.AreEqual(b.ToInt32(offset + i * sizeof(int)), 0);
                 }
 
-                ct2.Load(io);
+                ct2.Load(cio);
                 for (int i = 0; i < ct2.Count; i++) {
                     Assert.AreEqual(ct2[i], ct[i]);
                 }
@@ -137,7 +138,7 @@ namespace SRFS.Tests.Model {
 
                 // Remove a cluster
                 ct.RemoveLastCluster();
-                ct.Flush(io);
+                ct.Flush(cio);
 
                 // Make sure that the last cluster is updated
                 b = new DataBlock(io.Bytes, 4 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);

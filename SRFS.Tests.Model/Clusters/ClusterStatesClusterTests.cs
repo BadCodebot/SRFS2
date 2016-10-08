@@ -19,14 +19,15 @@ namespace SRFS.Tests.Model.Clusters {
         public void ClusterStateArraySaveLoadTest() {
             ConfigurationTest.Initialize();
 
-            using (var io = new MemoryIO(30 * 1024 * 1024, 512)) {
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+                SimpleClusterIO cio = new SimpleClusterIO(io);
 
                 Random r = new Random();
-                ClusterStatesCluster csc = new ClusterStatesCluster();
+                ClusterStatesCluster csc = new ClusterStatesCluster(2);
                 for (int i = 0; i < csc.Count; i++) csc[i] = (ClusterState)r.Next(16);
-                csc.Address = 2;
+                csc.Initialize();
                 csc.NextClusterAddress = Constants.NoAddress;
-                csc.Save(io);
+                cio.Save(csc);
 
                 int offset = 0;
                 DataBlock b = new DataBlock(io.Bytes, 2 * Configuration.Geometry.BytesPerCluster, Configuration.Geometry.BytesPerCluster);
@@ -65,9 +66,8 @@ namespace SRFS.Tests.Model.Clusters {
                 for (int i = 0; i < csc.Count; i++) cs[i] = (ClusterState)b.ToByte(offset + i * sizeof(ClusterState));
                 Assert.IsTrue(cs.SequenceEqual(csc));
 
-                ClusterStatesCluster csc2 = new ClusterStatesCluster();
-                csc2.Address = 2;
-                csc2.Load(io);
+                ClusterStatesCluster csc2 = new ClusterStatesCluster(2);
+                cio.Load(csc2);
                 Assert.AreEqual(csc.ID, csc2.ID);
                 Assert.AreEqual(csc.Type, csc2.Type);
                 Assert.AreEqual(csc.NextClusterAddress, csc2.NextClusterAddress);
