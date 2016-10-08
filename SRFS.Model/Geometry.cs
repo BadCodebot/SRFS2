@@ -8,6 +8,22 @@ namespace SRFS.Model {
 
     public class Geometry {
 
+        public override bool Equals(object obj) {
+            if (obj is Geometry) {
+                Geometry g = (Geometry)obj;
+                return _bytesPerCluster == g._bytesPerCluster &&
+                    _clustersPerTrack == g._clustersPerTrack &&
+                    _dataClustersPerTrack == g._dataClustersPerTrack &&
+                    _trackCount == g._trackCount;
+            } else {
+                return false;
+            }
+        }
+
+        public override int GetHashCode() {
+            return _bytesPerCluster + _clustersPerTrack + _dataClustersPerTrack + _trackCount;
+        }
+
         public Geometry(int bytesPerCluster, int clustersPerTrack, int dataClustersPerTrack, int trackCount) {
             _bytesPerCluster = bytesPerCluster;
             _clustersPerTrack = clustersPerTrack;
