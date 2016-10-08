@@ -1,6 +1,6 @@
 ﻿namespace SRFS.Model.Clusters {
 
-    public class FileDataCluster : FileCluster {
+    public class FileDataCluster : FileEncryptionCluster {
 
         // Public
         #region Constructors
@@ -12,15 +12,17 @@
             _headerLength = CalculateHeaderLength(0);
         }
 
-        public FileDataCluster() : base(0) {
+        public FileDataCluster(int address) : base(address, 0) {
             Type = ClusterType.FileData;
         }
+
+        public FileDataCluster(FileDataCluster c) : base(c) { }
 
         #endregion
         #region Methods
 
-        public override void Clear() {
-            base.Clear();
+        public override void Initialize() {
+            base.Initialize();
             Type = ClusterType.FileData;
         }
 
