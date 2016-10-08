@@ -2,14 +2,16 @@
 
 namespace SRFS.Model.Clusters {
 
-    public class VerifyTimesCluster : ArrayCluster<DateTime> {
+    public sealed class VerifyTimesCluster : ArrayCluster<DateTime> {
 
         // Public
         #region Constructors
 
-        public VerifyTimesCluster() : base(sizeof(long)) {
+        public VerifyTimesCluster(int address) : base(address, sizeof(long)) {
             Type = ClusterType.VerifyTimeTable;
         }
+
+        public VerifyTimesCluster(VerifyTimesCluster c) : base(c) { }
 
         #endregion
 
