@@ -3,7 +3,7 @@ using System.Text;
 
 namespace SRFS.Model.Clusters {
 
-    public class FileHeaderCluster : FileCluster {
+    public sealed class FileHeaderCluster : FileEncryptionCluster {
 
         public static new int HeaderLength => _headerLength;
         private static readonly int _headerLength;
@@ -20,11 +20,13 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public FileHeaderCluster() : base(Offset_Data) {
+        public FileHeaderCluster(int address) : base(address, Offset_Data) {
             ParentID = Constants.NoID;
             Name = string.Empty;
             Type = ClusterType.FileHeader;
         }
+
+        public FileHeaderCluster(FileHeaderCluster c) : base(c) { }
 
         #endregion
         #region Properties
@@ -57,8 +59,8 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Methods 
 
-        public override void Clear() {
-            base.Clear();
+        public override void Initialize() {
+            base.Initialize();
             ParentID = Constants.NoID;
             Name = string.Empty;
             Type = ClusterType.FileHeader;
