@@ -5,7 +5,7 @@ namespace SRFS.Model.Clusters {
     [Flags]
     public enum ClusterType : byte {
         None = 0,
-        PartitionHeader,
+        FileSystemHeader,
         ClusterStateTable,
         NextClusterAddressTable,
         BytesUsedTable,
