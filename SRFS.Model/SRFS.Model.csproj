@@ -60,13 +60,13 @@
     <Compile Include="Clusters\ClusterStatesCluster.cs" />
     <Compile Include="Clusters\Cluster.cs" />
     <Compile Include="Clusters\ClusterType.cs" />
-    <Compile Include="Clusters\FileCluster.cs" />
+    <Compile Include="Clusters\FileEncryptionCluster.cs" />
     <Compile Include="Clusters\FileDataCluster.cs" />
     <Compile Include="Clusters\FileHeaderCluster.cs" />
-    <Compile Include="Clusters\FileSystemCluster.cs" />
+    <Compile Include="Clusters\FileBaseCluster.cs" />
     <Compile Include="Clusters\VerifyTimesCluster.cs" />
     <Compile Include="Clusters\IntArrayCluster.cs" />
-    <Compile Include="Clusters\PartitionHeaderCluster.cs" />
+    <Compile Include="Clusters\FileSystemHeaderCluster.cs" />
     <Compile Include="ClusterTable.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
@@ -81,12 +81,15 @@
     <Compile Include="Data\KeyThumbprint.cs" />
     <Compile Include="Data\PublicKey.cs" />
     <Compile Include="Data\Signature.cs" />
+    <Compile Include="FileIO.cs" />
     <Compile Include="FileSizeFormatProvider.cs" />
     <Compile Include="FileSystem.cs" />
     <Compile Include="Geometry.cs" />
+    <Compile Include="IClusterIO.cs" />
     <Compile Include="Options.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SharingException.cs" />
+    <Compile Include="SimpleClusterIO.cs" />
     <Compile Include="StringExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
