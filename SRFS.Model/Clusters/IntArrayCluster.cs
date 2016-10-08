@@ -1,11 +1,13 @@
 ﻿namespace SRFS.Model.Clusters {
 
-    public class IntArrayCluster : ArrayCluster<int> {
+    public sealed class IntArrayCluster : ArrayCluster<int> {
 
         // Public
         #region Constructors
 
-        public IntArrayCluster() : base(sizeof(int)) { }
+        public IntArrayCluster(int address) : base(address, sizeof(int)) { }
+
+        public IntArrayCluster(IntArrayCluster c) : base(c) { }
 
         #endregion
 
