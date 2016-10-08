@@ -7,8 +7,13 @@ namespace SRFS.Model.Data {
 
         public const int StorageLength = FileSystemEntryStorageLength + sizeof(long) + sizeof(int);
 
-        public static ObjectArrayCluster<File> CreateArrayCluster(int address) => new ObjectArrayCluster<File>(ClusterType.FileTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new File(block, offset)) { Address = address };
+        public static ObjectArrayCluster<File> CreateArrayCluster(int address) => 
+            new ObjectArrayCluster<File>(
+                address,
+                ClusterType.FileTable,
+                StorageLength, 
+                (block, offset, value) => value.Save(block, offset), 
+                (block, offset) => new File(block, offset));
 
         public File(int id, string name) : base(id, name) {
             _length = 0;
@@ -25,7 +30,7 @@ namespace SRFS.Model.Data {
         }
 
         public override bool Equals(object obj) {
-            if (obj is File) return Equals((File)obj);
+            if (obj is File file) return Equals(file);
             return false;
         }
 
