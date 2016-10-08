@@ -1,8 +1,9 @@
 ﻿using System;
+using System.ComponentModel;
 
 namespace SRFS.Model.Clusters {
 
-    public class FileSystemCluster : Cluster {
+    public abstract class FileBaseCluster : Cluster {
 
         // Public
         #region Fields
@@ -10,21 +11,27 @@ namespace SRFS.Model.Clusters {
         public static new int HeaderLength => _headerLength;
         private static readonly int _headerLength;
 
-        static FileSystemCluster() {
+        static FileBaseCluster() {
             _headerLength = Cluster.HeaderLength + Offset_Data;
         }
 
         #endregion
         #region Constructors
 
-        public FileSystemCluster() : base(Configuration.Geometry.BytesPerCluster) {
+        protected FileBaseCluster(int address) : base(Configuration.Geometry.BytesPerCluster) {
+            if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
             _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
-            _address = Constants.NoAddress;
+            _address = address;
 
             FileID = Constants.NoID;
             NextClusterAddress = Constants.NoAddress;
             BytesUsed = 0;
             WriteTime = DateTime.MinValue;
+        }
+
+        protected FileBaseCluster(FileBaseCluster c) : base(c) {
+            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
+            _address = c._address;
         }
 
         #endregion
@@ -73,16 +80,13 @@ namespace SRFS.Model.Clusters {
             get {
                 return _address;
             }
-            set {
-                _address = value;
-            }
         }
 
         #endregion
         #region Methods
 
-        public override void Clear() {
-            base.Clear();
+        public override void Initialize() {
+            base.Initialize();
             FileID = Constants.NoID;
             NextClusterAddress = Constants.NoAddress;
             BytesUsed = 0;
@@ -94,13 +98,15 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Properties
 
-        protected override long AbsoluteAddress {
+        public override long AbsoluteAddress {
             get {
                 return _address == Constants.NoAddress ? Constants.NoAddress : _address * Configuration.Geometry.BytesPerCluster;
             }
         }
 
         protected override DataBlock OpenBlock => _data;
+
+        public abstract DataBlock Data { get; }
 
         #endregion
 
