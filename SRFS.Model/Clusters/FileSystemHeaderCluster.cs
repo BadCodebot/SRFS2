@@ -2,7 +2,7 @@
 
 namespace SRFS.Model.Clusters {
 
-    public class PartitionHeaderCluster : Cluster {
+    public sealed class FileSystemHeaderCluster : Cluster {
 
         // Public
         #region Fields
@@ -14,8 +14,8 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public PartitionHeaderCluster() : base(ClusterSize) {
-            Type = ClusterType.PartitionHeader;
+        public FileSystemHeaderCluster(int deviceBlockSize) : base(CalculateClusterSize(deviceBlockSize)) {
+            Type = ClusterType.FileSystemHeader;
             BytesPerCluster = 0;
             ClustersPerTrack = 0;
             DataClustersPerTrack = 0;
@@ -23,18 +23,13 @@ namespace SRFS.Model.Clusters {
             VolumeName = string.Empty;
         }
 
+        public FileSystemHeaderCluster(FileSystemHeaderCluster c) : base(c) { }
+
         #endregion
         #region Properties
 
-        public static int ClusterSize {
-            get {
-                if (!_clusterSize.HasValue) {
-                    int blockSize = Configuration.Partition.BytesPerBlock;
-                    _clusterSize = (Offset_Data + blockSize - 1) / blockSize * blockSize;
-                }
-
-                return _clusterSize.Value;
-            }
+        public static int CalculateClusterSize(int deviceBlockSize) {
+            return (Offset_Data + deviceBlockSize - 1) / deviceBlockSize * deviceBlockSize;
         }
 
         public int BytesPerCluster {
@@ -90,9 +85,9 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Methods
 
-        public override void Clear() {
-            base.Clear();
-            Type = ClusterType.PartitionHeader;
+        public override void Initialize() {
+            base.Initialize();
+            Type = ClusterType.FileSystemHeader;
             BytesPerCluster = Configuration.Geometry.BytesPerCluster;
             ClustersPerTrack = Configuration.Geometry.ClustersPerTrack;
             DataClustersPerTrack = Configuration.Geometry.DataClustersPerTrack;
@@ -104,7 +99,7 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Properties
 
-        protected override long AbsoluteAddress => 0;
+        public override long AbsoluteAddress => 0;
 
         #endregion
 
@@ -130,8 +125,6 @@ namespace SRFS.Model.Clusters {
         private static readonly int Length_Name = MaximumNameLength * sizeof(char);
 
         private static readonly int Offset_Data = Offset_Name + Length_Name;
-
-        private static int? _clusterSize;
 
         #endregion
     }
