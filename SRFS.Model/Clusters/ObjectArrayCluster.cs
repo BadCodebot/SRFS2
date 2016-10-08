@@ -1,23 +1,24 @@
 ﻿using System;
-using System.Security.AccessControl;
-using System.Security.Principal;
-using SRFS.Model.Data;
-using System.Diagnostics;
-using System.IO;
 
 namespace SRFS.Model.Clusters {
 
-    public class ObjectArrayCluster<T> : ArrayCluster<T> where T : class {
+    public sealed class ObjectArrayCluster<T> : ArrayCluster<T> where T : class {
 
         // Public
         #region Constructors
 
-        public ObjectArrayCluster(ClusterType type, int elementLength, Action<DataBlock,int, T> saveDelegate,
-            Func<DataBlock,int,T> loadDelegate) : base(elementLength + sizeof(bool)) {
+        public ObjectArrayCluster(int address, ClusterType type, int elementLength, Action<DataBlock,int, T> saveDelegate,
+            Func<DataBlock,int,T> loadDelegate) : base(address, elementLength + sizeof(bool)) {
             Type = type;
             _saveDelegate = saveDelegate;
             _loadDelegate = loadDelegate;
             _elementLength = elementLength;
+        }
+
+        public ObjectArrayCluster(ObjectArrayCluster<T> c) : base(c) {
+            _saveDelegate = c._saveDelegate;
+            _loadDelegate = c._loadDelegate;
+            _elementLength = c._elementLength;
         }
 
         #endregion
