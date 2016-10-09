@@ -127,5 +127,61 @@ namespace SRFS.Tests.Model {
                 Assert.AreEqual(0, (from s in fs.ClusterStates where (s & ClusterState.Used) != 0 && (s & ClusterState.System) == 0 select s).Count());
             }
         }
+
+        [TestMethod]
+        public void FillFileSystemTest() {
+            ConfigurationTest.Initialize();
+            Random r = new Random(1234);
+
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+
+                FileSystem fs = FileSystem.Create(io);
+
+                byte[] data = new byte[1024*1024];
+
+                Directory d = fs.RootDirectory;
+                File f = fs.CreateFile(d, "TEST");
+                int totalBytesWritten = 0;
+                using (FileIO fio = new FileIO(fs, f)) {
+                    int bytesWritten = 0;
+                    do {
+                        r.NextBytes(data);
+                        bytesWritten = fio.WriteFile(data, f.Length);
+                        totalBytesWritten += bytesWritten;
+                    } while (bytesWritten != 0);
+                }
+
+                fs.Dispose();
+
+                CryptoSettings cryptoSettings = Configuration.CryptoSettings;
+                Options options = Configuration.Options;
+                Configuration.Reset();
+                Configuration.CryptoSettings = cryptoSettings;
+                Configuration.Options = options;
+
+                fs = FileSystem.Mount(io);
+
+                r = new Random(1234);
+                f = fs.GetContainedFiles(fs.RootDirectory)["TEST"];
+                Assert.AreEqual(f.Length, totalBytesWritten);
+                int totalBytesRead = 0;
+                byte[] compare = new byte[1024 * 1024];
+                using (FileIO fio = new FileIO(fs, f)) {
+                    int bytesRead = 0;
+                    do {
+                        r.NextBytes(data);
+                        bytesRead = fio.ReadFile(compare, totalBytesRead);
+                        totalBytesRead += bytesRead;
+                        for (int i = 0; i < bytesRead; i++) {
+                            Assert.AreEqual(compare[i], data[i]);
+                        }
+                    } while (bytesRead != 0);
+                }
+
+                Assert.AreEqual(totalBytesRead, totalBytesWritten);
+
+                fs.Dispose();
+            }
+        }
     }
 }
