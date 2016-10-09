@@ -14,7 +14,7 @@ namespace SRFS.Tests.Model {
         private static int BytesPerCluster = 16 * 1024;
         private static int ClustersPerTrack = 256;
         private static int DataClustersPerTrack = 256 - 32;
-        private static int TrackCount = 128;
+        private static int TrackCount = 32;
 
         public static MemoryIO CreateMemoryIO() {
             return new MemoryIO(RequiredSize, BlockSize);
