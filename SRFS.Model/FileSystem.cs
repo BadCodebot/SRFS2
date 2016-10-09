@@ -483,7 +483,7 @@ namespace SRFS.Model {
                         return i;
                     }
                 }
-                throw new IOException("Out of space");
+                return Constants.NoAddress;
             }
         }
 
