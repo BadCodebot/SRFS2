@@ -118,6 +118,7 @@ namespace SRFS.Model {
         }
 
         public void SetName(string name) {
+            if (_clusterAddresses.Count == 0) return;
             Load(0);
             ((FileHeaderCluster)_cluster).Name = name;
         }
@@ -148,7 +149,7 @@ namespace SRFS.Model {
             int clusterCountCompare = _clusterAddresses.Count.CompareTo(lastLogicalClusterNumber + 1);
             if (clusterCountCompare == -1) {
                 // We need to add clusters
-                Load(lastLogicalClusterNumber);
+                if (!Load(lastLogicalClusterNumber)) throw new System.IO.IOException("Out of space");
                 NextCluster = Constants.NoAddress;
                 BytesUsed = lastClusterSize;
 
@@ -205,14 +206,16 @@ namespace SRFS.Model {
             return fileCluster;
         }
 
-        protected void Load(int logicalClusterNumber) {
+        protected bool Load(int logicalClusterNumber) {
 
             // If it's already load, do nothing
-            if (_logicalClusterNumber == logicalClusterNumber) return;
+            if (_logicalClusterNumber == logicalClusterNumber) return true;
 
             // Add clusters if necessary
             while (logicalClusterNumber >= _clusterAddresses.Count) {
                 int allocatedCluster = _fileSystem.AllocateCluster();
+                if (allocatedCluster == Constants.NoAddress) return false;
+
                 if (_clusterAddresses.Count == 0) {
                     _file.FirstCluster = allocatedCluster;
                 } else {
@@ -235,9 +238,12 @@ namespace SRFS.Model {
 
             // The cluster has not been changed
             _isModified = false;
+
+            return true;
         }
 
         private int read(byte[] buffer, int bufferOffset, int count, long filePosition) {
+            if (filePosition >= _file.Length) return 0;
 
             if (buffer == null) throw new ArgumentNullException(nameof(buffer));
             if (bufferOffset < 0 || bufferOffset > buffer.Length) throw new ArgumentOutOfRangeException(nameof(bufferOffset));
@@ -309,7 +315,7 @@ namespace SRFS.Model {
             }
 
             if (filePosition > _file.Length) SetEndOfFile(filePosition);
-            Load(clusterNumber);
+            if (!Load(clusterNumber)) return 0;
 
             // The total number of bytes to write, limited by the size of the buffer.  This should never be zero.
             int bytesToWrite = Math.Min(count, _cluster.Data.Length - clusterOffset);
