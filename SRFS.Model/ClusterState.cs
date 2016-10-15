@@ -13,7 +13,8 @@ namespace SRFS.Model {
         Used = 0x01,
         Parity = 0x02,
         Modified = 0x04,
-        System = 0x08
+        System = 0x08,
+        Null = 0x16
     }
 
     public static class ClusterStateExtensions {
