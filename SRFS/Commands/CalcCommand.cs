@@ -33,18 +33,19 @@ namespace SRFS.Commands {
 
             int fileSystemHeaderClusterSize = FileSystemHeaderCluster.CalculateClusterSize(p.BytesPerBlock);
             long bytesAvailable = p.SizeBytes - fileSystemHeaderClusterSize;
-            Geometry g = new Geometry(bytesPerSlice, ReedSolomon.K, ReedSolomon.N - ReedSolomon.K, 1);
+            Geometry g = new Geometry(bytesPerSlice, ReedSolomon.N, ReedSolomon.K, 1);
             long totalTracks = bytesAvailable / g.CalculateTrackSizeBytes(p.BytesPerBlock);
             if (totalTracks > int.MaxValue)
                 throw new CommandLineArgumentException("Too many tracks, please use a larger value of Reed Solomon N and/or bytesPerCluster.");
-            g = new Geometry(bytesPerSlice, ReedSolomon.K, ReedSolomon.N - ReedSolomon.K, (int)totalTracks);
+            g = new Geometry(bytesPerSlice, ReedSolomon.N, ReedSolomon.K, (int)totalTracks);
+            Configuration.Geometry = g;
 
             Console.WriteLine($"Bytes per Cluster: {g.BytesPerCluster.ToFileSize()}");
-            Console.WriteLine($"Data Clusters per Chain: {g.DataClustersPerTrack}");
-            Console.WriteLine($"Parity Clusters per Chain: {g.ParityClustersPerTrack}");
-            Console.WriteLine($"Total Clusters per Chain: {g.ClustersPerTrack}");
+            Console.WriteLine($"Data Clusters per Track: {g.DataClustersPerTrack}");
+            Console.WriteLine($"Parity Clusters per Track: {g.ParityClustersPerTrack}");
+            Console.WriteLine($"Total Clusters per Track: {g.ClustersPerTrack}");
             Console.WriteLine($"Resiliency: {(double)g.ParityClustersPerTrack / g.ClustersPerTrack:%#0.00}");
-            Console.WriteLine($"Total Chains: {g.TrackCount}");
+            Console.WriteLine($"Total Tracks: {g.TrackCount}");
             Console.WriteLine($"Bytes Used: {(g.CalculateFileSystemSize(p.BytesPerBlock)).ToFileSize()}");
             Console.WriteLine($"Bytes Available: {((long)g.DataClustersPerTrack * g.TrackCount * (g.BytesPerCluster - FileDataCluster.HeaderLength)).ToFileSize()}");
             Console.WriteLine($"Bytes Wasted: {(p.SizeBytes - g.CalculateFileSystemSize(p.BytesPerBlock)).ToFileSize()}");
