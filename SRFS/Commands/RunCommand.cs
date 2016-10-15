@@ -29,8 +29,6 @@ namespace SRFS.Commands {
         [Invoke]
         public void Invoke() {
 
-            Configuration.Partition = PartitionOptions.GetPartition();
-
             Options options = Options.None;
             if (doNotVerifyHashes) options |= Options.DoNotVerifyClusterHashes;
             if (doNotVerifySignatures) options |= Options.DoNotVerifyClusterSignatures;
@@ -41,7 +39,7 @@ namespace SRFS.Commands {
             CngKey signingKey = CryptoSettingsOptions.GetSigningKey();
             Configuration.CryptoSettings = new CryptoSettings(decryptionKey, signingKey, encryptionKey);
 
-            using (var pio = new PartitionIO(Configuration.Partition))
+            using (var pio = new PartitionIO(PartitionOptions.GetPartition()))
             using (var fs = FileSystem.Mount(pio)) { 
                 SRFSDokan d = new SRFSDokan(fs);
                 d.Mount("S:\\");

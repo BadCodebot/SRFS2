@@ -1,5 +1,6 @@
 ﻿using SRFS.IO;
 using System;
+using SRFS.Model.Clusters;
 
 namespace SRFS.Model {
 
@@ -66,17 +67,6 @@ namespace SRFS.Model {
             set {
                 if (IsVolumeNameInitialized) throw new InvalidOperationException();
                 _volumeName = value;
-            }
-        }
-
-        public static Partition Partition {
-            get {
-                if (!IsPartitionInitialized) throw new InvalidOperationException();
-                return _partition;
-            }
-            set {
-                if (IsPartitionInitialized) throw new InvalidOperationException();
-                _partition = value;
             }
         }
 
