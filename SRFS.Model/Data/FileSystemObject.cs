@@ -33,7 +33,7 @@ namespace SRFS.Model.Data {
             get {
                 lock (_lock) return _name;
             }
-            private set {
+            set {
                 if (value == null) throw new ArgumentNullException(nameof(value));
                 if (value.Length > Constants.MaximumNameLength) throw new ArgumentException();
                 _name = value;
