@@ -14,7 +14,7 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public FileSystemHeaderCluster(int deviceBlockSize) : base(CalculateClusterSize(deviceBlockSize)) {
+        public FileSystemHeaderCluster(int deviceBlockSize) : base(0, CalculateClusterSize(deviceBlockSize)) {
             Type = ClusterType.FileSystemHeader;
             BytesPerCluster = 0;
             ClustersPerTrack = 0;
@@ -23,7 +23,9 @@ namespace SRFS.Model.Clusters {
             VolumeName = string.Empty;
         }
 
-        public FileSystemHeaderCluster(FileSystemHeaderCluster c) : base(c) { }
+        private FileSystemHeaderCluster(FileSystemHeaderCluster c) : base(c) { }
+
+        public override Cluster Clone() => new FileSystemHeaderCluster(this);
 
         #endregion
         #region Properties

@@ -1,4 +1,6 @@
-﻿namespace SRFS.Model.Clusters {
+﻿using System;
+
+namespace SRFS.Model.Clusters {
 
     public sealed class ClusterStatesCluster : ArrayCluster<ClusterState> {
 
@@ -18,6 +20,10 @@
                 if (!_elementsPerCluster.HasValue) _elementsPerCluster = CalculateElementCount(sizeof(byte));
                 return _elementsPerCluster.Value;
             }
+        }
+
+        public override Cluster Clone() {
+            return new ClusterStatesCluster(this);
         }
 
         // Protected

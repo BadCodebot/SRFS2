@@ -19,10 +19,6 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Properties
 
-        public int Address {
-            get { return _address; }
-        }
-
         public int NextClusterAddress {
             get {
                 return base.OpenBlock.ToInt32(Offset_NextCluster);
@@ -49,16 +45,14 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Constructors
 
-        protected ArrayCluster(int address) : base(Configuration.Geometry.BytesPerCluster) {
+        protected ArrayCluster(int address) : base(address, Configuration.Geometry.BytesPerCluster) {
             if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
             _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
             NextClusterAddress = Constants.NoAddress;
-            _address = address;
         }
 
         protected ArrayCluster(ArrayCluster c) : base(c) {
             _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
-            _address = c._address;
         }
 
         #endregion
@@ -66,7 +60,7 @@ namespace SRFS.Model.Clusters {
 
         public override long AbsoluteAddress {
             get {
-                return _address == Constants.NoAddress ? Constants.NoAddress : _address * Configuration.Geometry.BytesPerCluster;
+                return Address == Constants.NoAddress ? Constants.NoAddress : (long)Address * Configuration.Geometry.BytesPerCluster;
             }
         }
 
@@ -81,8 +75,6 @@ namespace SRFS.Model.Clusters {
         private static readonly int Length_NextCluster = sizeof(int);
 
         private static readonly int Offset_Data = Offset_NextCluster + Length_NextCluster;
-
-        private int _address;
 
         private DataBlock _data;
 

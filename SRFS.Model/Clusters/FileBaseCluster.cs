@@ -18,10 +18,9 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        protected FileBaseCluster(int address) : base(Configuration.Geometry.BytesPerCluster) {
+        protected FileBaseCluster(int address) : base(address, Configuration.Geometry.BytesPerCluster) {
             if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
             _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
-            _address = address;
 
             FileID = Constants.NoID;
             NextClusterAddress = Constants.NoAddress;
@@ -31,8 +30,8 @@ namespace SRFS.Model.Clusters {
 
         protected FileBaseCluster(FileBaseCluster c) : base(c) {
             _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
-            _address = c._address;
         }
+
 
         #endregion
         #region Properties
@@ -76,12 +75,6 @@ namespace SRFS.Model.Clusters {
             }
         }
 
-        public int Address {
-            get {
-                return _address;
-            }
-        }
-
         #endregion
         #region Methods
 
@@ -100,7 +93,7 @@ namespace SRFS.Model.Clusters {
 
         public override long AbsoluteAddress {
             get {
-                return _address == Constants.NoAddress ? Constants.NoAddress : _address * Configuration.Geometry.BytesPerCluster;
+                return Address == Constants.NoAddress ? Constants.NoAddress : (long)Address * Configuration.Geometry.BytesPerCluster;
             }
         }
 
@@ -128,8 +121,6 @@ namespace SRFS.Model.Clusters {
         private static readonly int Offset_Data = Offset_WriteTime + Length_WriteTime;
 
         private DataBlock _data;
-
-        private int _address;
 
         #endregion
     }

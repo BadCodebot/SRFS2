@@ -15,11 +15,14 @@ namespace SRFS.Model.Clusters {
             _elementLength = elementLength;
         }
 
-        public ObjectArrayCluster(ObjectArrayCluster<T> c) : base(c) {
+        private ObjectArrayCluster(ObjectArrayCluster<T> c) : base(c) {
             _saveDelegate = c._saveDelegate;
             _loadDelegate = c._loadDelegate;
             _elementLength = c._elementLength;
         }
+
+        public override Cluster Clone() => new ObjectArrayCluster<T>(this);
+
 
         #endregion
 

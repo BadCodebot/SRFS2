@@ -16,7 +16,9 @@
             Type = ClusterType.FileData;
         }
 
-        public FileDataCluster(FileDataCluster c) : base(c) { }
+        public override Cluster Clone() => new FileDataCluster(this);
+
+        private FileDataCluster(FileDataCluster c) : base(c) { }
 
         #endregion
         #region Methods

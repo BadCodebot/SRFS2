@@ -7,7 +7,9 @@
 
         public IntArrayCluster(int address) : base(address, sizeof(int)) { }
 
-        public IntArrayCluster(IntArrayCluster c) : base(c) { }
+        private IntArrayCluster(IntArrayCluster c) : base(c) { }
+
+        public override Cluster Clone() => new IntArrayCluster(this);
 
         #endregion
 

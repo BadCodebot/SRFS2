@@ -7,17 +7,19 @@ using System.ComponentModel;
 
 namespace SRFS.Model.Clusters {
 
-    public abstract class Cluster {
+    public abstract class Cluster : ICloneable<Cluster> {
 
         // Public
         #region Fields
 
         public const string HashAlgorithm = "SHA256";
 
+        public abstract Cluster Clone();
+
         #endregion
         #region Constructors
 
-        protected Cluster(int clusterSize) {
+        protected Cluster(int address, int clusterSize) {
             if (clusterSize < HeaderLength) throw new ArgumentOutOfRangeException();
 
             _data = new byte[clusterSize];
@@ -29,12 +31,14 @@ namespace SRFS.Model.Clusters {
             ID = Guid.Empty;
             Type = ClusterType.None;
             _isModified = true;
+            _address = address;
         }
 
         protected Cluster(Cluster c) {
             _data = new byte[c._data.Length];
             _openBlock = new DataBlock(_data, HeaderLength, _data.Length - HeaderLength);
             _openBlock.Changed += changedHandler;
+            _address = c._address;
 
             Buffer.BlockCopy(c._data, 0, _data, 0, _data.Length);
             _isModified = c._isModified;
@@ -46,6 +50,12 @@ namespace SRFS.Model.Clusters {
 
         #endregion
         #region Properties
+
+        public int Address {
+            get {
+                return _address;
+            }
+        }
 
         public int SizeBytes => _data.Length;
 
@@ -227,6 +237,8 @@ namespace SRFS.Model.Clusters {
 
         private int _clusterSize;
         private bool _isModified;
+
+        private int _address;
 
         #endregion
     }

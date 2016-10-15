@@ -55,6 +55,8 @@ namespace SRFS.Model.Clusters {
             // Check to see that there is room for encrypted data?
         }
 
+        public override Cluster Clone() => new FileEncryptionCluster(this);
+
         private void dataChanged(object sender) { _isDataModified = true; }
 
         #endregion

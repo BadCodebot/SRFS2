@@ -11,7 +11,9 @@ namespace SRFS.Model.Clusters {
             Type = ClusterType.VerifyTimeTable;
         }
 
-        public VerifyTimesCluster(VerifyTimesCluster c) : base(c) { }
+        private VerifyTimesCluster(VerifyTimesCluster c) : base(c) { }
+
+        public override Cluster Clone() => new VerifyTimesCluster(this);
 
         #endregion
 

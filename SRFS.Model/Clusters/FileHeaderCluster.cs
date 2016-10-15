@@ -26,7 +26,9 @@ namespace SRFS.Model.Clusters {
             Type = ClusterType.FileHeader;
         }
 
-        public FileHeaderCluster(FileHeaderCluster c) : base(c) { }
+        public override Cluster Clone() => new FileHeaderCluster(this);
+         
+        private FileHeaderCluster(FileHeaderCluster c) : base(c) { }
 
         #endregion
         #region Properties
