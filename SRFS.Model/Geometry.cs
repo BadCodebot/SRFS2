@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SRFS.Model.Clusters;
 
 namespace SRFS.Model {
 
@@ -31,11 +32,25 @@ namespace SRFS.Model {
             _trackCount = trackCount;
         }
 
+        public long CalculateFileSystemSize(int bytesPerBlock) {
+            int fileSystemHeaderSize = FileSystemHeaderCluster.CalculateClusterSize(bytesPerBlock);
+            return fileSystemHeaderSize + CalculateTrackSizeBytes(bytesPerBlock) * TrackCount;
+        }
+
+        public long CalculateTrackSizeBytes(int bytesPerBlock) {
+            long dataClusterSize = (long)DataClustersPerTrack * BytesPerCluster;
+            long parityClusterHeader = (Cluster.HeaderLength + bytesPerBlock - 1) / bytesPerBlock * bytesPerBlock;
+            long parityClusterSize = (ClustersPerTrack - DataClustersPerTrack) * (BytesPerCluster + parityClusterHeader);
+            return dataClusterSize + parityClusterSize;
+        }
+
         public int BytesPerCluster => _bytesPerCluster;
 
         public int ClustersPerTrack => _clustersPerTrack;
 
         public int DataClustersPerTrack => _dataClustersPerTrack;
+
+        public int ParityClustersPerTrack => _clustersPerTrack - _dataClustersPerTrack;
 
         public int TrackCount => _trackCount;
 
