@@ -21,15 +21,20 @@ namespace SRFS.Model {
         }
 
         public virtual void Load(Cluster c) {
-            _io.Read(c.AbsoluteAddress + _skipBytes, _buffer, 0, Configuration.Geometry.BytesPerCluster);
-            c.Load(_buffer, 0);
+            lock (_lock) {
+                _io.Read(c.AbsoluteAddress + _skipBytes, _buffer, 0, Configuration.Geometry.BytesPerCluster);
+                c.Load(_buffer, 0);
+            }
         }
 
         public virtual void Save(Cluster c) {
-            c.Save(_buffer, 0);
-            _io.Write(c.AbsoluteAddress + _skipBytes, _buffer, 0, Configuration.Geometry.BytesPerCluster);
+            lock (_lock) {
+                c.Save(_buffer, 0);
+                _io.Write(c.AbsoluteAddress + _skipBytes, _buffer, 0, Configuration.Geometry.BytesPerCluster);
+            }
         }
 
+        private object _lock = new object();
         private byte[] _buffer;
         private IBlockIO _io;
         private long _skipBytes;
