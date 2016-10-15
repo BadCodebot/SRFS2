@@ -42,6 +42,5 @@ namespace SRFS.Model.Data {
         public bool Equals(Directory other) {
             return base.Equals(other);
         }
-
     }
 }
