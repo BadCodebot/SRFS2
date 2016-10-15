@@ -41,6 +41,7 @@ namespace SRFS.Model {
             if (!_isDisposed) {
                 if (disposing) {
                     Flush();
+                    _fileSystem.Flush();
                 }
 
                 _isDisposed = true;
