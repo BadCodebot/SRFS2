@@ -5,9 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
 
-namespace SRFS.Model {
+namespace SRFS {
 
-    public static class StringExtensions {
+    public static class SrfsExtension {
         public static string ToFileSize(this ulong l) {
             return String.Format(new FileSizeFormatProvider(), "{0:fs}", l);
         }

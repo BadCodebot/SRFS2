@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SRFS.Model {
+namespace SRFS {
 
     public class FileSizeFormatProvider : IFormatProvider, ICustomFormatter {
 

@@ -131,6 +131,13 @@ namespace SRFS.Model {
                 (address) => SrfsAuditRule.CreateArrayCluster(address));
 
             // Initialize the tables
+            int nDataClusters = Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
+            int nParityClusters = Configuration.Geometry.ParityClustersPerTrack * Configuration.Geometry.TrackCount;
+
+            for (int i = 0; i < nDataClusters; i++) _clusterStateTable[i] = ClusterState.Unused;
+            for (int i = nDataClusters; i < nDataClusters + nParityClusters; i++) _clusterStateTable[i] = ClusterState.Parity;
+            for (int i = nDataClusters + nParityClusters; i < _clusterStateTable.Count; i++) _clusterStateTable[i] = ClusterState.Null;
+
             for (int i = 0; i < _clusterStateTable.Count; i++) _clusterStateTable[i] = ClusterState.Unused;
             for (int i = 0; i < _nextClusterAddressTable.Count; i++) _nextClusterAddressTable[i] = Constants.NoAddress;
             for (int i = 0; i < _bytesUsedTable.Count; i++) _bytesUsedTable[i] = 0;
@@ -160,6 +167,9 @@ namespace SRFS.Model {
 
             // Create the root directory
             Directory dir = CreateDirectory(null, "");
+            dir.Owner = WindowsIdentity.GetCurrent().User;
+            dir.Group = WindowsIdentity.GetCurrent().User;
+            //dir.Group = new SecurityIdentifier(WellKnownSidType.NullSid, null);
             AddAccessRule(dir, new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
                 InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None,
                 AccessControlType.Allow));
@@ -289,6 +299,10 @@ namespace SRFS.Model {
                 Data.SrfsAuditRule r = _auditRules[i];
                 if (r != null) _auditRulesIndex[r.ID].Add(i);
             }
+
+            _nextEntryID = Math.Max(
+                _directoryIndex.Keys.Max(), 
+                _fileIndex.Count == 0 ? -1 : _fileIndex.Keys.Max()) + 1;
         }
 
         protected virtual void Dispose(bool disposing) {
@@ -325,10 +339,25 @@ namespace SRFS.Model {
             return (from i in _auditRulesIndex[entry.ID] select _auditRules[i].Rule);
         }
 
-        public void MoveDirectory(Directory dir, Directory newDirectory) {
+        public void MoveDirectory(Directory dir, Directory newDirectory, string newName) {
+            if (_containedDirectoriesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            if (_containedFilesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
             _containedDirectoriesIndex[dir.ParentID].Remove(dir.Name);
-            _containedDirectoriesIndex[newDirectory.ID].Add(dir.Name, dir);
             dir.ParentID = newDirectory.ID;
+            dir.Name = newName;
+            _containedDirectoriesIndex[newDirectory.ID].Add(dir.Name, dir);
+        }
+
+        public void MoveFile(File file, Directory newDirectory, string newName) {
+            if (_containedDirectoriesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            if (_containedFilesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            // We need to lock and check if the names already exist.  All access to these indices should be threadsafe.  Also,
+            // think about passing back copies of internal structures like lists and dictionaries so that we don't have pointers
+            // to stuff we try and lock later.
+            _containedFilesIndex[file.ParentID].Remove(file.Name);
+            file.ParentID = newDirectory.ID;
+            file.Name = newName;
+            _containedFilesIndex[newDirectory.ID].Add(file.Name, file);
         }
 
         public Directory CreateDirectory(Directory parent, string name) {
@@ -340,6 +369,7 @@ namespace SRFS.Model {
             }
 
             Directory dir = new Directory(_nextEntryID++, name);
+            dir.Attributes = System.IO.FileAttributes.Directory;
             if (parent != null) _containedDirectoriesIndex[parent.ID].Add(name, dir);
             int index = getFreeDirectoryIndex();
             _directoryTable[index] = dir;
@@ -361,6 +391,8 @@ namespace SRFS.Model {
             if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
 
             File file = new File(_nextEntryID++, name);
+            file.Attributes = System.IO.FileAttributes.Normal;
+
             _containedFilesIndex[parent.ID].Add(name, file);
             int index = getFreeFileIndex();
             _fileTable[index] = file;
@@ -411,6 +443,26 @@ namespace SRFS.Model {
             _auditRulesIndex.Remove(file.ID);
 
             if (index < _nextFileIndex) _nextFileIndex = index;
+        }
+
+        public void RemoveAccessRules(FileSystemObject obj) {
+            int lowestIndex = int.MaxValue;
+            foreach (var index in _accessRulesIndex[obj.ID]) {
+                _accessRules[index] = null;
+                if (index < lowestIndex) lowestIndex = index;
+            }
+            _accessRulesIndex[obj.ID].Clear();
+            if (lowestIndex != int.MaxValue) _nextAccessRuleIndex = Math.Min(_nextAccessRuleIndex, lowestIndex);
+        }
+
+        public void RemoveAuditRules(FileSystemObject obj) {
+            int lowestIndex = int.MaxValue;
+            foreach (var index in _auditRulesIndex[obj.ID]) {
+                _auditRules[index] = null;
+                if (index < lowestIndex) lowestIndex = index;
+            }
+            _auditRulesIndex[obj.ID].Clear();
+            if (lowestIndex != int.MaxValue) _nextAuditRuleIndex = Math.Min(_nextAuditRuleIndex, lowestIndex);
         }
 
         public void AddAccessRule(Directory dir, FileSystemAccessRule rule) {
@@ -549,7 +601,8 @@ namespace SRFS.Model {
 
         public long TotalNumberOfBytes {
             get {
-                return (long)(Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength) * Configuration.Geometry.TrackCount;
+                return (long)(Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength) * 
+                    Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
             }
         }
 
@@ -559,8 +612,16 @@ namespace SRFS.Model {
         public long TotalNumberOfFreeBytes {
             get {
                 lock (_lock) {
-                    long freeClusters = (from c in _clusterStateTable where c != ClusterState.Used select c).Count();
-                    return freeClusters * (Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength);
+                    long count = 0;
+                    for (int i = 0; i < Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount; i++) {
+                        if ((_clusterStateTable[i] & ClusterState.Used) == 0) count++;
+                    }
+
+                    //long freeClusters = (from c in _clusterStateTable
+                    //                     where (c & ClusterState.Used) == 0 && (c & ClusterState.Parity) == 0 &&
+                    //                     (c & ClusterState.Null) == 0
+                    //                     select c).Count();
+                    return count * (Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength);
                 }
             }
         }
@@ -646,13 +707,23 @@ namespace SRFS.Model {
                 _fileSystem = fs;
             }
 
+            public override void Load(Cluster c) {
+                if (c is FileBaseCluster fb) {
+                    Console.WriteLine($"Loading FileBaseCluster {fb.Address}");
+                } else if (c is ArrayCluster a) {
+                    Console.WriteLine($"Loading ArrayCluster {a.Address}");
+                }
+                base.Load(c);
+            }
             public override void Save(Cluster c) {
                 base.Save(c);
                 if (c is FileBaseCluster fb) {
+                    Console.WriteLine($"Saved FileBaseCluster {fb.Address}");
                     _fileSystem.SetBytesUsed(fb.Address, fb.BytesUsed);
                     _fileSystem.SetNextClusterAddress(fb.Address, fb.NextClusterAddress);
                     _fileSystem.SetClusterState(fb.Address, _fileSystem.GetClusterState(fb.Address) | ClusterState.Modified);
                 } else if (c is ArrayCluster a) {
+                    Console.WriteLine($"Saved ArrayCluster {a.Address}");
                     _fileSystem.SetNextClusterAddress(a.Address, a.NextClusterAddress);
                     _fileSystem.SetClusterState(a.Address, _fileSystem.GetClusterState(a.Address) | ClusterState.Modified);
                 }

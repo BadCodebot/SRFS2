@@ -59,7 +59,6 @@ namespace SRFS.Tests.Model.Clusters {
         private static SecurityIdentifier owner = WindowsIdentity.GetCurrent().Owner;
         private static int Address = 2;
         private static int NextClusterAddress = 3;
-        private static int BlockSize = 512;
         private static int RandomNumberGeneratorSeed = 1298;
         private static Random _random = new Random(RandomNumberGeneratorSeed);
 

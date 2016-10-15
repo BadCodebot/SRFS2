@@ -18,6 +18,46 @@ namespace SRFS.Tests.Model {
     public class FileIOTests {
 
         [TestMethod]
+        public void FileDeleteTest() {
+            ConfigurationTest.Initialize();
+            Random r = new Random(1234);
+
+            using (var io = ConfigurationTest.CreateMemoryIO()) {
+
+                FileSystem fs = FileSystem.Create(io);
+
+                byte[] data = new byte[1024 * 1024];
+                r.NextBytes(data);
+
+                Directory d = fs.RootDirectory;
+                File f = fs.CreateFile(d, "TEST");
+                using (FileIO fio = new FileIO(fs, f)) {
+                    Assert.AreEqual(data.Length, fio.WriteFile(data, 0));
+                }
+
+                fs.Dispose();
+
+                CryptoSettings cryptoSettings = Configuration.CryptoSettings;
+                Options options = Configuration.Options;
+                Configuration.Reset();
+                Configuration.CryptoSettings = cryptoSettings;
+                Configuration.Options = options;
+
+                fs = FileSystem.Mount(io);
+                byte[] data2 = new byte[data.Length];
+
+                File f2 = fs.GetContainedFiles(fs.RootDirectory)["TEST"];
+
+                fs.RemoveFile(f2);
+
+                Assert.AreEqual(0, (from s in fs.ClusterStates where (s & ClusterState.Used) != 0 && (s & ClusterState.System) == 0 select s).Count());
+                Assert.AreEqual(0, fs.GetContainedFiles(fs.RootDirectory).Count);
+
+                fs.Dispose();
+            }
+        }
+
+        [TestMethod]
         public void FileIOTest() {
             ConfigurationTest.Initialize();
             Random r = new Random(1234);

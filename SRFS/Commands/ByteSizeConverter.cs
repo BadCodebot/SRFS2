@@ -16,7 +16,7 @@ namespace SRFS.Commands {
             if (value is string) {
                 string v = (string)value;
 
-                Regex r = new Regex("^([0-9])([KMGT]B)?$");
+                Regex r = new Regex("^([0-9]+)([KMGT]B)?$");
                 Match m = r.Match(v.ToUpper());
                 if (!m.Success) throw new FormatException();
                 long size = long.Parse(m.Groups[1].Value);

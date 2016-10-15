@@ -22,7 +22,7 @@ namespace SRFS.Tests.Model {
 
         public static int RequiredSize {
             get {
-                return BytesPerCluster * ClustersPerTrack * TrackCount + 2 * BlockSize;
+                return (BytesPerCluster + 1024) * ClustersPerTrack * TrackCount + 2 * BlockSize;
             }
         }
 

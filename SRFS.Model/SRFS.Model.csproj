@@ -53,6 +53,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Clusters\ICloneable.cs" />
     <Compile Include="DataBlock.cs" />
     <Compile Include="ClusterState.cs" />
     <Compile Include="Clusters\ObjectArrayCluster.cs" />
@@ -82,15 +83,14 @@
     <Compile Include="Data\PublicKey.cs" />
     <Compile Include="Data\Signature.cs" />
     <Compile Include="FileIO.cs" />
-    <Compile Include="FileSizeFormatProvider.cs" />
     <Compile Include="FileSystem.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="IClusterIO.cs" />
     <Compile Include="Options.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SharingException.cs" />
+    <Compile Include="CachedClusterIO.cs" />
     <Compile Include="SimpleClusterIO.cs" />
-    <Compile Include="StringExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SRFS.IO\SRFS.IO.csproj">
