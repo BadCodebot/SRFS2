@@ -20,11 +20,17 @@
     <ClCompile Include="GF16.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GF16MultiplicationTable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="GF16.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GF16MultiplicationTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
