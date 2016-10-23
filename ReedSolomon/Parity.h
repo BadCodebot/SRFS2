@@ -19,6 +19,7 @@ namespace ReedSolomon {
 		inline size_t GetNParityCodewords() const { return _nParityCodewords; }
 		inline size_t GetNParityBlocks() const { return _parityBlocksPerVector; }
 		inline __m128i* GetFirstParityBlock() const { return (__m128i*)_parityVectors; }
+		inline size_t GetCodewordsPerSlice() const { return _codewordsPerSlice; }
 
 	private:
 
@@ -33,4 +34,8 @@ namespace ReedSolomon {
 		uint16_t* _parityVectors;
 		__m128i* _parity;
 	};
+
+	extern "C" {
+		__declspec(dllexport) Parity* Parity_Construct(size_t nDataCodewords, size_t nParityCodewords, size_t codewordsPerSlice);
+	}
 }

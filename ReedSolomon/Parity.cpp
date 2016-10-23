@@ -67,4 +67,8 @@ namespace ReedSolomon {
 			dest += _codewordsPerSlice;
 		}
 	}
+
+	Parity* Parity_Construct(size_t nDataCodewords, size_t nParityCodewords, size_t codewordsPerSlice) {
+		return new Parity(nDataCodewords, nParityCodewords, codewordsPerSlice);
+	}
 }
