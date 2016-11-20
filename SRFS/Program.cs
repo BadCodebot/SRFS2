@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using SRFS.Model;
 using System.Security.Cryptography;
 using System.IO;
+using SRFS.ReedSolomon;
 
 namespace SRFS {
 
@@ -22,6 +23,8 @@ namespace SRFS {
             CommandTypes.Add(typeof(FileRunCommand));
             CommandTypes.Add(typeof(RunCommand));
             CommandTypes.Add(typeof(CalcCommand));
+            CommandTypes.Add(typeof(VerifyCommand));
+            CommandTypes.Add(typeof(TrackCommand));
         }
 
         static int Main(string[] args) {

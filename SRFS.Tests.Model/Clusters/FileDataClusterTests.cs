@@ -126,7 +126,7 @@ namespace SRFS.Tests.Model.Clusters {
 
                 Assert.IsTrue(csc2.Marker.SequenceEqual(Constants.SrfsMarker));
                 Assert.IsTrue(csc2.Version.SequenceEqual(Constants.CurrentVersion));
-                Assert.AreEqual(csc2.ID, Configuration.FileSystemID);
+                Assert.AreEqual(csc2.VolumeID, Configuration.FileSystemID);
                 Assert.AreEqual(csc2.Type, ClusterType.FileData);
                 Assert.AreEqual(csc2.FileID, fileID);
                 Assert.AreEqual(csc2.NextClusterAddress, nextClusterAddress);

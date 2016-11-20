@@ -55,6 +55,7 @@ namespace SRFS {
 
         }
 
+        
         private static string defaultFormat(string format, object arg, IFormatProvider formatProvider) {
             IFormattable formattableArg = arg as IFormattable;
             if (formattableArg != null) {

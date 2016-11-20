@@ -1,37 +1,28 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace SRFS.Model.Clusters {
 
-    public abstract class FileBaseCluster : Cluster {
+    public abstract class FileBaseCluster : DataCluster {
 
         // Public
         #region Fields
 
-        public static new int HeaderLength => _headerLength;
-        private static readonly int _headerLength;
-
-        static FileBaseCluster() {
-            _headerLength = Cluster.HeaderLength + Offset_Data;
-        }
+        public const int FileBaseCluster_HeaderLength = DataCluster_HeaderLength + HeaderLength;
 
         #endregion
         #region Constructors
 
-        protected FileBaseCluster(int address) : base(address, Configuration.Geometry.BytesPerCluster) {
+        protected FileBaseCluster(int address, int clusterSize, Guid volumeID, ClusterType clusterType) : base(address, clusterSize, volumeID, clusterType) {
             if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
-            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
 
-            FileID = Constants.NoID;
-            NextClusterAddress = Constants.NoAddress;
-            BytesUsed = 0;
-            WriteTime = DateTime.MinValue;
+            _fileID = Constants.NoID;
+            _nextClusterAddress = Constants.NoAddress;
+            _bytesUsed = 0;
+            _writeTime = DateTime.MinValue;
         }
-
-        protected FileBaseCluster(FileBaseCluster c) : base(c) {
-            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
-        }
-
 
         #endregion
         #region Properties
@@ -41,84 +32,113 @@ namespace SRFS.Model.Clusters {
         /// </summary>
         public int FileID {
             get {
-                return base.OpenBlock.ToInt32(Offset_FileID);
+                return _fileID;
             }
             set {
-                base.OpenBlock.Set(Offset_FileID, value);
+                if (_fileID == value) return;
+                _fileID = value;
+                NotifyPropertyChanged();
             }
         }
 
         public int NextClusterAddress {
             get {
-                return base.OpenBlock.ToInt32(Offset_NextClusterAddress);
+                return _nextClusterAddress;
             }
             set {
-                base.OpenBlock.Set(Offset_NextClusterAddress, value);
+                if (_nextClusterAddress == value) return;
+                _nextClusterAddress = value;
+                NotifyPropertyChanged();
             }
         }
 
         public int BytesUsed {
             get {
-                return base.OpenBlock.ToInt32(Offset_BytesUsed);
+                return _bytesUsed;
             }
             set {
-                base.OpenBlock.Set(Offset_BytesUsed, value);
+                if (_bytesUsed == value) return;
+                _bytesUsed = value;
+                NotifyPropertyChanged();
             }
         }
 
         public DateTime WriteTime {
             get {
-                return new DateTime(base.OpenBlock.ToInt64(Offset_WriteTime));
+                return _writeTime;
             }
             set {
-                base.OpenBlock.Set(Offset_WriteTime, value.Ticks);
+                if (_writeTime == value) return;
+                _writeTime = value;
+                NotifyPropertyChanged();
             }
         }
 
         #endregion
         #region Methods
 
-        public override void Initialize() {
-            base.Initialize();
-            FileID = Constants.NoID;
-            NextClusterAddress = Constants.NoAddress;
-            BytesUsed = 0;
-            WriteTime = DateTime.MinValue;
+        protected override void Read(BinaryReader reader) {
+            base.Read(reader);
+
+            _fileID = reader.ReadInt32();
+            _nextClusterAddress = reader.ReadInt32();
+            _bytesUsed = reader.ReadInt32();
+            _writeTime = reader.ReadDateTime();
+        }
+
+        protected override void Write(BinaryWriter writer) {
+            base.Write(writer);
+
+            writer.Write(_fileID);
+            writer.Write(_nextClusterAddress);
+            writer.Write(_bytesUsed);
+            writer.Write(_writeTime);
         }
 
         #endregion
 
-        // Protected
-        #region Properties
+        protected static byte[] Encrypt(ECDiffieHellmanCng ecc, CngKey publicKey, byte[] bytes, int offset, int length) {
+            using (AesCng aes = new AesCng()) {
 
-        public override long AbsoluteAddress {
-            get {
-                return Address == Constants.NoAddress ? Constants.NoAddress : (long)Address * Configuration.Geometry.BytesPerCluster;
+                aes.KeySize = 256;
+                aes.BlockSize = 128;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.None;
+                aes.Key = ecc.DeriveKeyMaterial(publicKey);
+                aes.IV = new byte[16];
+
+                using (var decryptor = aes.CreateEncryptor()) return decryptor.TransformFinalBlock(bytes, offset, length);
             }
         }
 
-        protected override DataBlock OpenBlock => _data;
+        protected static byte[] Decrypt(ECDiffieHellmanCng ecc, CngKey publicKey, byte[] bytes, int offset, int length) {
+            using (AesCng aes = new AesCng()) {
 
-        public abstract DataBlock Data { get; }
+                aes.KeySize = 256;
+                aes.BlockSize = 128;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.None;
+                aes.Key = ecc.DeriveKeyMaterial(publicKey);
+                aes.IV = new byte[16];
 
-        #endregion
+                using (var decryptor = aes.CreateDecryptor()) return decryptor.TransformFinalBlock(bytes, offset, length);
+            }
+        }
+
 
         // Private
         #region Fields
 
-        private static readonly int Offset_FileID = 0;
-        private static readonly int Length_FileID = sizeof(int);
+        private const int HeaderLength =
+            sizeof(int) +
+            sizeof(int) +
+            sizeof(int) +
+            sizeof(long);
 
-        private static readonly int Offset_NextClusterAddress = Offset_FileID + Length_FileID;
-        private static readonly int Length_NextClusterAddress = sizeof(int);
-
-        private static readonly int Offset_BytesUsed = Offset_NextClusterAddress + Length_NextClusterAddress;
-        private static readonly int Length_BytesUsed = sizeof(int);
-
-        private static readonly int Offset_WriteTime = Offset_BytesUsed + Length_BytesUsed;
-        private static readonly int Length_WriteTime = sizeof(long);
-
-        private static readonly int Offset_Data = Offset_WriteTime + Length_WriteTime;
+        private int _fileID;
+        private int _nextClusterAddress;
+        private int _bytesUsed;
+        private DateTime _writeTime;
 
         private DataBlock _data;
 

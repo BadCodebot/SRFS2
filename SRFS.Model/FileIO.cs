@@ -27,8 +27,8 @@ namespace SRFS.Model {
             _isModified = false;
             _logicalClusterNumber = Constants.NoAddress;
 
-            _firstClusterDataLength = Configuration.Geometry.BytesPerCluster - FileHeaderCluster.HeaderLength;
-            _clusterDataLength = Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength;
+            _firstClusterDataLength = Configuration.Geometry.BytesPerCluster - FileHeaderCluster.FileBaseClusterHeaderLength;
+            _clusterDataLength = Configuration.Geometry.BytesPerCluster - FileDataCluster.FileBaseClusterHeaderLength;
 
             int absoluteClusterNumber = file.FirstCluster;
             while (absoluteClusterNumber != Constants.NoAddress) {

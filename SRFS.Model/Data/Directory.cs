@@ -1,6 +1,7 @@
 ﻿using SRFS.Model.Clusters;
 using System;
 using FileAttributes = System.IO.FileAttributes;
+using System.IO;
 
 namespace SRFS.Model.Data {
 
@@ -8,18 +9,24 @@ namespace SRFS.Model.Data {
 
         public const int StorageLength = FileSystemEntryStorageLength;
 
-        public static ObjectArrayCluster<Directory> CreateArrayCluster(int address) => 
+        public static ObjectArrayCluster<Directory> CreateArrayCluster(int address, int clusterSizeBytes, Guid volumeID) => 
             new ObjectArrayCluster<Directory>(
                 address,
+                clusterSizeBytes,
+                volumeID,
                 ClusterType.DirectoryTable,
-                StorageLength, (block, offset, value) => value.Save(block, offset), 
-                (block, offset) => new Directory(block, offset));
+                StorageLength, 
+                (writer, dir) => dir.Write(writer), 
+                (reader) => new Directory(reader),
+                (writer) => writer.Write(_zero));
+
+        private static readonly byte[] _zero = new byte[StorageLength];
 
         public Directory(int id, string name) : base(id, name) {
             Attributes = FileAttributes.Normal;
         }
 
-        public Directory(DataBlock dataBlock, int offset) : base(dataBlock, offset) { }
+        public Directory(BinaryReader reader) : base(reader) { }
 
         public override FileAttributes Attributes {
             get {

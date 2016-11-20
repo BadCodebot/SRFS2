@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Text;
+using SRFS.Model.Data;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace SRFS.Model.Clusters {
 
-    public sealed class FileHeaderCluster : FileEncryptionCluster {
-
-        public static new int HeaderLength => _headerLength;
-        private static readonly int _headerLength;
-
-        static FileHeaderCluster() {
-            _headerLength = CalculateHeaderLength(Offset_Data);
-        }
+    public sealed class FileHeaderCluster : FileBaseCluster {
 
         // Public
         #region Fields
@@ -20,74 +16,116 @@ namespace SRFS.Model.Clusters {
         #endregion
         #region Constructors
 
-        public FileHeaderCluster(int address) : base(address, Offset_Data) {
+        public FileHeaderCluster(int address, int clusterSizeBytes, Guid volumeID, PublicKey encryptionKey, PrivateKey decryptionKey) 
+            : base(address, clusterSizeBytes, volumeID, ClusterType.FileHeader) {
+            if (clusterSizeBytes % 16 != 0) throw new ArgumentException();
+
             ParentID = Constants.NoID;
             Name = string.Empty;
-            Type = ClusterType.FileHeader;
-        }
 
-        public override Cluster Clone() => new FileHeaderCluster(this);
-         
-        private FileHeaderCluster(FileHeaderCluster c) : base(c) { }
+            _decryptionKey = decryptionKey;
+            _encryptionKey = encryptionKey;
+
+            _plainTextData = new byte[clusterSizeBytes - DataOffset];
+        }
 
         #endregion
         #region Properties
 
-        public static int DataSize => Configuration.Geometry.BytesPerCluster - _headerLength;
-
         public int ParentID {
             get {
-                return base.OpenBlock.ToInt32(Offset_ParentID);
+                return _parentID;
             }
             set {
-                base.OpenBlock.Set(Offset_ParentID, value);
+                if (_parentID == value) return;
+                _parentID = value;
+                NotifyPropertyChanged();
             }
         }
 
         public string Name {
             get {
-                return base.OpenBlock.ToString(Offset_Name, base.OpenBlock.ToByte(Offset_NameLength));
+                return _name;
             }
             set {
                 if (value == null) throw new ArgumentNullException();
                 if (value.Length > MaximumNameLength) throw new ArgumentException();
 
-                base.OpenBlock.Set(Offset_NameLength, (byte)value.Length);
-                base.OpenBlock.Set(Offset_Name, value);
-                base.OpenBlock.Clear(Offset_Name + value.Length * sizeof(char), (MaximumNameLength - value.Length) * sizeof(char));
+                _name = value;
+                NotifyPropertyChanged();
             }
         }
 
         #endregion
         #region Methods 
 
-        public override void Initialize() {
-            base.Initialize();
-            ParentID = Constants.NoID;
-            Name = string.Empty;
-            Type = ClusterType.FileHeader;
+        protected override void Write(BinaryWriter writer) {
+            base.Write(writer);
+
+            writer.Write(_parentID);
+            writer.WriteSrfsString(_name);
+            writer.Write(_encryptionKey.Thumbprint);
+
+            using (ECDiffieHellmanCng source = new ECDiffieHellmanCng()) {
+                writer.Write(source.PublicKey);
+                writer.Write(_padding);
+                writer.Write(Encrypt(source, _encryptionKey.Key, _plainTextData, 0, _plainTextData.Length));
+            }
         }
 
-        #endregion
 
-        // Protected
-        #region Properties
+        protected override void Read(BinaryReader reader) {
+            base.Read(reader);
+
+            _parentID = reader.ReadInt32();
+            _name = reader.ReadSrfsString();
+
+            KeyThumbprint encryptionKeyThumbprint = reader.ReadKeyThumbprint();
+            if (!encryptionKeyThumbprint.Equals(_decryptionKey.Thumbprint)) throw new System.IO.IOException();
+
+            CngKey publicSourceKey = reader.ReadPublicKey().Key;
+            reader.ReadBytes(PaddingLength);
+            byte[] encryptedData = reader.ReadBytes(_plainTextData.Length);
+
+            using (ECDiffieHellmanCng destinationKey = new ECDiffieHellmanCng(_decryptionKey.Key)) {
+                _plainTextData = Decrypt(destinationKey, publicSourceKey, encryptedData, 0, encryptedData.Length);
+            }
+        }
+
 
         #endregion
 
         // Private
         #region Fields
 
-        private static readonly int Offset_ParentID = 0;
-        private static readonly int Length_ParentID = sizeof(int);
+        private const int ParentIDOffset = 0;
+        private const int ParentIDLength = sizeof(int);
 
-        private static readonly int Offset_NameLength = Offset_ParentID + Length_ParentID;
-        private static readonly int Length_NameLength = sizeof(byte);
+        private const int NameLengthOffset = ParentIDOffset + ParentIDLength;
+        private const int NameLengthLength = sizeof(byte);
 
-        private static readonly int Offset_Name = Offset_NameLength + Length_NameLength;
-        private static readonly int Length_Name = MaximumNameLength * sizeof(char);
+        private const int NameOffset = NameLengthOffset + NameLengthLength;
+        private const int NameLength = MaximumNameLength * sizeof(char);
 
-        private static readonly int Offset_Data = Offset_Name + Length_Name;
+        private const int KeyThumbprintOffset = NameOffset + NameLength;
+        private const int KeyThumbprintLength = KeyThumbprint.Length;
+
+        private const int PublicKeyOffset = KeyThumbprintOffset + KeyThumbprintLength;
+        private const int PublicKeyLength = PublicKey.Length;
+
+        private const int PaddingOffset = PublicKeyOffset + PublicKeyLength;
+        private const int PaddingLength = (16 - ((FileBaseCluster_HeaderLength + PaddingOffset) % 16)) % 16;
+        private static readonly byte[] _padding = new byte[PaddingLength];
+
+        private const int DataOffset = PaddingOffset + PaddingLength;
+
+        private int _parentID;
+        private string _name;
+        
+        private PublicKey _encryptionKey;
+        private PrivateKey _decryptionKey;
+
+        private byte[] _plainTextData;
 
         #endregion
     }

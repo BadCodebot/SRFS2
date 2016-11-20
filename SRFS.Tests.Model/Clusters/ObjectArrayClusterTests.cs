@@ -135,7 +135,7 @@ namespace SRFS.Tests.Model.Clusters {
 
                 var csc2 = clusterFactory();
                 cio.Load(csc2);
-                Assert.AreEqual(csc.ID, csc2.ID);
+                Assert.AreEqual(csc.VolumeID, csc2.VolumeID);
                 Assert.AreEqual(csc.Type, csc2.Type);
                 Assert.AreEqual(csc.NextClusterAddress, csc2.NextClusterAddress);
 

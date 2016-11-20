@@ -3,6 +3,7 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 
 namespace SRFS.IO {
 
@@ -22,7 +23,7 @@ namespace SRFS.IO {
                 IntPtr.Zero);
 
             var e = Marshal.GetLastWin32Error();
-            if (e != 0) throw new System.IO.IOException("Create File Exception", e);
+            if (e != 0) throw new Win32Exception(e);
 
             // Make sure our cast in the BlockSize property will work
             if (partition.Drive.BytesPerSector > int.MaxValue) throw new OverflowException();

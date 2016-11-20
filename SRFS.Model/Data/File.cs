@@ -1,5 +1,6 @@
 ﻿using SRFS.Model.Clusters;
 using System;
+using System.IO;
 
 namespace SRFS.Model.Data {
 
@@ -7,26 +8,27 @@ namespace SRFS.Model.Data {
 
         public const int StorageLength = FileSystemEntryStorageLength + sizeof(long) + sizeof(int);
 
-        public static ObjectArrayCluster<File> CreateArrayCluster(int address) => 
+        public static ObjectArrayCluster<File> CreateArrayCluster(int address, int clusterSizeBytes, Guid volumeID) => 
             new ObjectArrayCluster<File>(
                 address,
+                clusterSizeBytes,
+                volumeID,
                 ClusterType.FileTable,
                 StorageLength, 
-                (block, offset, value) => value.Save(block, offset), 
-                (block, offset) => new File(block, offset));
+                (writer, file) => file.Write(writer), 
+                (reader) => new File(reader),
+                (writer) => writer.Write(_zero));
+
+        private static readonly byte[] _zero = new byte[StorageLength];
 
         public File(int id, string name) : base(id, name) {
             _length = 0;
             _firstCluster = Constants.NoAddress;
         }
 
-        public File(DataBlock dataBlock, int offset) : base(dataBlock, offset) {
-            offset += FileSystemEntryStorageLength;
-
-            _length = dataBlock.ToInt64(offset);
-            offset += sizeof(long);
-
-            _firstCluster = dataBlock.ToInt32(offset);
+        public File(BinaryReader reader) : base(reader) {
+            _length = reader.ReadInt64();
+            _firstCluster = reader.ReadInt32();
         }
 
         public override bool Equals(object obj) {
@@ -44,14 +46,10 @@ namespace SRFS.Model.Data {
                 _firstCluster == other._firstCluster;
         }
 
-        public override void Save(DataBlock dataBlock, int offset) {
-            base.Save(dataBlock, offset);
-            offset += FileSystemEntryStorageLength;
-
-            dataBlock.Set(offset, _length);
-            offset += sizeof(long);
-
-            dataBlock.Set(offset, _firstCluster);
+        public override void Write(BinaryWriter writer) {
+            base.Write(writer);
+            writer.Write(_length);
+            writer.Write(_firstCluster);
         }
 
         public long Length {

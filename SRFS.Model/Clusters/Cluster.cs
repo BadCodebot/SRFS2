@@ -1,244 +1,165 @@
-﻿using SRFS.IO;
-using SRFS.Model.Data;
+﻿using SRFS.Model.Data;
 using System;
-using System.IO;
-using System.Security.Cryptography;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 
 namespace SRFS.Model.Clusters {
 
-    public abstract class Cluster : ICloneable<Cluster> {
+    public class Cluster : INotifyPropertyChanged {
 
         // Public
-        #region Fields
-
-        public const string HashAlgorithm = "SHA256";
-
-        public abstract Cluster Clone();
-
-        #endregion
         #region Constructors
 
-        protected Cluster(int address, int clusterSize) {
-            if (clusterSize < HeaderLength) throw new ArgumentOutOfRangeException();
+        public Cluster(int clusterSizeBytes, Guid volumeID, ClusterType clusterType) {
+            if (clusterSizeBytes < HeaderLength) throw new ArgumentOutOfRangeException();
+            _clusterSizeBytes = clusterSizeBytes;
 
-            _data = new byte[clusterSize];
-            _openBlock = new DataBlock(_data, HeaderLength, clusterSize - HeaderLength);
-            _openBlock.Changed += changedHandler;
+            _volumeID = volumeID;
+            _clusterType = ClusterType;
 
-            Marker = Constants.SrfsMarker;
-            Version = Constants.CurrentVersion;
-            ID = Guid.Empty;
-            Type = ClusterType.None;
             _isModified = true;
-            _address = address;
-        }
-
-        protected Cluster(Cluster c) {
-            _data = new byte[c._data.Length];
-            _openBlock = new DataBlock(_data, HeaderLength, _data.Length - HeaderLength);
-            _openBlock.Changed += changedHandler;
-            _address = c._address;
-
-            Buffer.BlockCopy(c._data, 0, _data, 0, _data.Length);
-            _isModified = c._isModified;
-        }
-
-        static Cluster() {
-            _headerLength = Offset_ClusterType + Length_ClusterType;
         }
 
         #endregion
         #region Properties
 
-        public int Address {
-            get {
-                return _address;
-            }
-        }
+        public const int Cluster_HeaderLength = HeaderLength;
 
-        public int SizeBytes => _data.Length;
+        public Guid VolumeID => _volumeID;
 
-        public static int HeaderLength => _headerLength;
+        public ClusterType ClusterType => _clusterType;
 
-        public byte[] Marker {
-            get {
-                byte[] buffer = new byte[Length_Marker];
-                Buffer.BlockCopy(_data, Offset_Marker, buffer, 0, Length_Marker);
-                return buffer;
-            }
-            set {
-                if (value == null) throw new ArgumentNullException();
-                if (value.Length != Length_Marker) throw new ArgumentException();
-                Buffer.BlockCopy(value, 0, _data, Offset_Marker, Length_Marker);
-                _isModified = true;
-            }
-        }
-
-        public byte[] Version {
-            get {
-                byte[] buffer = new byte[Length_Version];
-                Buffer.BlockCopy(_data, Offset_Version, buffer, 0, Length_Version);
-                return buffer;
-            }
-            set {
-                if (value == null) throw new ArgumentNullException();
-                if (value.Length != Length_Version) throw new ArgumentException();
-                Buffer.BlockCopy(value, 0, _data, Offset_Version, Length_Version);
-                _isModified = true;
-            }
-        }
-
-        public Guid ID {
-            get {
-                byte[] bytes = new byte[Constants.GuidLength];
-                Buffer.BlockCopy(_data, Offset_ID, bytes, 0, Constants.GuidLength);
-                return new Guid(bytes);
-            }
-            set {
-                if (value == null) throw new ArgumentNullException();
-                Buffer.BlockCopy(value.ToByteArray(), 0, _data, Offset_ID, Constants.GuidLength);
-                _isModified = true;
-            }
-        }
-
-        public ClusterType Type {
-            get {
-                return (ClusterType)_data[Offset_ClusterType];
-            }
-            protected set {
-                _data[Offset_ClusterType] = (byte)value;
-                _isModified = true;
-            }
-        }
+        public int ClusterSizeBytes => _clusterSizeBytes;
 
         #endregion
         #region Methods
 
-        private void changedHandler(object sender) {
+        protected void NotifyPropertyChanged([CallerMemberName] string propertyName = null) {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             _isModified = true;
         }
 
-        public virtual void Initialize() {
-            Marker = Constants.SrfsMarker;
-            Version = Constants.CurrentVersion;
-            ID = Configuration.FileSystemID;
-            _isModified = true;
-        }
-
-        public bool IsMarkerValid() {
-            for (int i = 0; i < Length_Marker; i++) if (_data[Offset_Marker + i] != Constants.SrfsMarker[i]) return false;
-            return true;
-        }
-
-        public bool IsVersionCompatible() {
-            for (int i = 0; i < Length_Version; i++) if (_data[Offset_Version + i] != Constants.CurrentVersion[i]) return false;
-            return true;
-        }
-
-        public bool IsHashValid() {
-            byte[] hash = CalculateHash();
-            for (int i = 0; i < Length_Hash; i++) if (hash[i] != _data[Offset_Hash + i]) return false;
-            return true;
-        }
-
-
-        public bool IsSignatureValid() {
-            return new Signature(_data, Offset_Signature).Verify(_data, Offset_SignatureThumbprint, _data.Length - Offset_SignatureThumbprint,
-                Configuration.CryptoSettings.SigningKey);
-        }
-
-        public void UpdateHash() {
-            Buffer.BlockCopy(CalculateHash(), 0, _data, Offset_Hash, Length_Hash);
-        }
-
-        public void UpdateSignature() {
-            Buffer.BlockCopy(Configuration.CryptoSettings.SigningKeyThumbprint.Bytes, 0, _data, Offset_SignatureThumbprint, KeyThumbprint.Length);
-            Buffer.BlockCopy(
-                new Signature(Configuration.CryptoSettings.SigningKey, _data, Offset_SignatureThumbprint, _data.Length - Offset_SignatureThumbprint).Bytes,
-                0, _data, Offset_Signature, Signature.Length);
-        }
-
-        public virtual void Load(byte[] bytes, int offset) {
+        public void Load(byte[] bytes, int offset, IDictionary<KeyThumbprint, PublicKey> signatureKeys, Options options) {
             if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            if (signatureKeys == null) throw new ArgumentNullException(nameof(signatureKeys));
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
-            if (_data.Length + offset > bytes.Length) throw new ArgumentException();
+            if (bytes.Length + offset > bytes.Length) throw new ArgumentException();
 
-            Buffer.BlockCopy(bytes, offset, _data, 0, _data.Length);
-            if (!IsMarkerValid()) throw new ArgumentException("Invalid Cluster Marker");
-            if (!IsVersionCompatible()) throw new ArgumentException("Unsupported version");
-            if (Configuration.Options.VerifyClusterHashes() && !IsHashValid()) throw new IOException("Cluster has invalid hash");
-            if (Configuration.Options.VerifyClusterSignatures() && !IsSignatureValid()) throw new IOException("Cluster has invalid signature");
-            _isModified = false;
-        }
+            using (var stream = new MemoryStream(bytes, offset, _clusterSizeBytes))
+            using (var reader = new BinaryReader(stream)) {
 
-        public virtual void Save(byte[] bytes, int offset) {
-            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
-            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
-            if (_data.Length + offset > bytes.Length) throw new ArgumentException();
+                if (!reader.ReadBytes(Constants.SrfsMarkerLength).SequenceEqual(Constants.SrfsMarker))
+                    throw new IOException("Invalid Marker");
 
-            if (_isModified) {
-                UpdateHash();
-                UpdateSignature();
+                if (!reader.ReadBytes(Constants.CurrentVersionLength).SequenceEqual(Constants.CurrentVersion))
+                    throw new IOException("Unsupported Version");
+
+                Signature signature = reader.ReadSignature();
+                byte[] hash = reader.ReadBytes(Constants.HashLength);
+                KeyThumbprint signatureThumbprint = reader.ReadKeyThumbprint();
+
+                if (options.VerifyClusterHashes() && !hash.SequenceEqual(calculateHash(bytes, offset)))
+                    throw new IOException("Cluster has invalid hash");
+
+                if (options.VerifyClusterSignatures()) {
+                    PublicKey key = null;
+                    if (!signatureKeys.TryGetValue(signatureThumbprint, out key)) throw new IOException("Cannot verify signature, key not found.");
+
+                    if (!signature.Verify(bytes, offset + HashPosition, Constants.HashLength, key.Key))
+                        throw new IOException("Cluster has invalid signature");
+                }
+
+                _volumeID = reader.ReadGuid();
+                _clusterType = reader.ReadClusterType();
+
+                Read(reader);
+
                 _isModified = false;
             }
-            Buffer.BlockCopy(_data, 0, bytes, offset, _data.Length);
         }
 
-        #endregion
+        protected virtual void Read(BinaryReader reader) { }
 
-        // Protected
-        #region Properties
+        protected virtual void Write(BinaryWriter writer) { }
 
-        public abstract long AbsoluteAddress { get; }
+        public void Save(byte[] bytes, int offset, PrivateKey signingKey) {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (offset + _clusterSizeBytes > bytes.Length) throw new ArgumentException();
 
-        protected virtual DataBlock OpenBlock => _openBlock;
+            using (var stream = new MemoryStream(bytes, offset, _clusterSizeBytes))
+            using (var writer = new BinaryWriter(stream)) {
+                writer.Write(Constants.SrfsMarker);
+                writer.Write(Constants.CurrentVersion);
+
+                stream.Position = HashCalculationStartPosition;
+
+                writer.Write(signingKey.Thumbprint);
+                writer.Write(_volumeID);
+                writer.Write(_clusterType);
+
+                Write(writer);
+
+                Array.Clear(bytes, offset + (int)stream.Position, _clusterSizeBytes - (int)stream.Position);
+
+                stream.Position = HashPosition;
+                writer.Write(calculateHash(bytes, offset));
+
+                stream.Position = SignaturePosition;
+                writer.Write(calculateSignature(bytes, offset, signingKey));
+            }
+
+            _isModified = false;
+        }
 
         #endregion
 
         // Private
         #region Methods
 
-        private byte[] CalculateHash() {
+        private byte[] calculateHash(byte[] bytes, int offset) {
             using (var hasher = new SHA256Cng()) {
-                hasher.TransformFinalBlock(_data, HeaderLength, _data.Length - HeaderLength);
+                hasher.TransformFinalBlock(bytes, offset + HashCalculationStartPosition, _clusterSizeBytes - HashCalculationStartPosition);
                 return hasher.Hash;
             }
+        }
+
+        private byte[] calculateSignature(byte[] bytes, int offset, PrivateKey signingKey) {
+            return new Signature(signingKey.Key, bytes, offset + HashPosition, Constants.HashLength).Bytes;
         }
 
         #endregion
         #region Fields
 
-        private static readonly int _headerLength;
+        private const int SignaturePosition =
+            Constants.SrfsMarkerLength +
+            Constants.CurrentVersionLength;
 
-        private static readonly int Offset_Marker = 0;
-        private static readonly int Length_Marker = 4;
+        private const int HashPosition =
+            SignaturePosition +
+            Signature.Length;
 
-        private static readonly int Offset_Version = Offset_Marker + Length_Marker;
-        private static readonly int Length_Version = 2;
+        private const int HashCalculationStartPosition =
+            HashPosition +
+            Constants.HashLength;
 
-        private static readonly int Offset_ID = Offset_Version + Length_Version;
-        private static readonly int Length_ID = Constants.GuidLength;
+        private const int HeaderLength =
+            HashCalculationStartPosition +
+            KeyThumbprint.Length +
+            Constants.GuidLength +
+            sizeof(ClusterType);
 
-        private static readonly int Offset_Signature = Offset_ID + Length_ID;
-        private static readonly int Length_Signature = Signature.Length;
+        private Guid _volumeID;
+        private ClusterType _clusterType;
 
-        private static readonly int Offset_SignatureThumbprint = Offset_Signature + Length_Signature;
-        private static readonly int Length_SignatureThumbprint = KeyThumbprint.Length;
-
-        private static readonly int Offset_Hash = Offset_SignatureThumbprint + Length_SignatureThumbprint;
-        private static readonly int Length_Hash = 32;
-
-        private static readonly int Offset_ClusterType = Offset_Hash + Length_Hash;
-        private static readonly int Length_ClusterType = sizeof(ClusterType);
-
-        private byte[] _data;
-        private DataBlock _openBlock;
-
-        private int _clusterSize;
+        private int _clusterSizeBytes;
         private bool _isModified;
 
-        private int _address;
+        public event PropertyChangedEventHandler PropertyChanged;
 
         #endregion
     }

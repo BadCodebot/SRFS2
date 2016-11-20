@@ -1,43 +1,37 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.IO;
 
 namespace SRFS.Model.Clusters {
 
-    public abstract class ArrayCluster : Cluster {
+    public abstract class ArrayCluster : DataCluster {
 
         // Public
         #region Fields
 
-        public static new int HeaderLength => _headerLength;
-        private static readonly int _headerLength;
-
-        static ArrayCluster() {
-            _headerLength = Cluster.HeaderLength + Offset_Data;
-        }
+        public const int ArrayCluster_HeaderLength = DataCluster_HeaderLength + HeaderLength;
 
         #endregion
         #region Properties
 
         public int NextClusterAddress {
             get {
-                return base.OpenBlock.ToInt32(Offset_NextCluster);
+                return _nextClusterAddress;
             }
             set {
-                base.OpenBlock.Set(Offset_NextCluster, value);
+                if (_nextClusterAddress == value) return;
+                _nextClusterAddress = value;
+                NotifyPropertyChanged();
             }
         }
 
         #endregion
         #region Methods
 
-        public static int CalculateElementCount(int elementSize) {
-            return (Configuration.Geometry.BytesPerCluster - HeaderLength) / elementSize;
-        }
-
-        public override void Initialize() {
-            base.Initialize();
-            NextClusterAddress = Constants.NoAddress;
+        protected static int CalculateElementCount(int elementSize, int bytesPerCluster) {
+            return (bytesPerCluster - ArrayCluster_HeaderLength) / elementSize;
         }
 
         #endregion
@@ -45,38 +39,33 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Constructors
 
-        protected ArrayCluster(int address) : base(address, Configuration.Geometry.BytesPerCluster) {
+        protected ArrayCluster(int address, int clusterSize, Guid volumeID, ClusterType clusterType) : 
+            base(address, clusterSize, volumeID, clusterType) {
             if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
-            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
-            NextClusterAddress = Constants.NoAddress;
-        }
-
-        protected ArrayCluster(ArrayCluster c) : base(c) {
-            _data = new DataBlock(base.OpenBlock, Offset_Data, base.OpenBlock.Length - Offset_Data);
+            _nextClusterAddress = Constants.NoAddress;
         }
 
         #endregion
-        #region Properties
+        #region Methods
 
-        public override long AbsoluteAddress {
-            get {
-                return Address == Constants.NoAddress ? Constants.NoAddress : (long)Address * Configuration.Geometry.BytesPerCluster;
-            }
+        protected override void Read(BinaryReader reader) {
+            base.Read(reader);
+            _nextClusterAddress = reader.ReadInt32();
         }
 
-        protected new DataBlock OpenBlock => _data;
+        protected override void Write(BinaryWriter writer) {
+            base.Write(writer);
+            writer.Write(_nextClusterAddress);
+        }
 
         #endregion
 
         // Private
         #region Fields
 
-        private static readonly int Offset_NextCluster = 0;
-        private static readonly int Length_NextCluster = sizeof(int);
+        private const int HeaderLength = sizeof(int);
 
-        private static readonly int Offset_Data = Offset_NextCluster + Length_NextCluster;
-
-        private DataBlock _data;
+        private int _nextClusterAddress;
 
         #endregion
     }
@@ -88,45 +77,56 @@ namespace SRFS.Model.Clusters {
 
         public T this[int index] {
             get {
-                if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
-                return ReadElement(base.OpenBlock, index * _elementSize);
+                return _elements[index];
             }
             set {
-                if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException();
-                WriteElement(value, base.OpenBlock, index * _elementSize);
+                _elements[index] = value;
+                NotifyPropertyChanged();
             }
         }
 
-        public int Count => _count;
+        public int Count => _elements.Length;
 
         #endregion
 
         // Protected
         #region Constructors
 
-        protected ArrayCluster(int address, int elementSize) : base(address) {
+        protected ArrayCluster(int address, int bytesPerCluster, Guid volumeID, ClusterType clusterType, int elementSize) : 
+            base(address, bytesPerCluster, volumeID, clusterType) {
             _elementSize = elementSize;
-            _count = CalculateElementCount(elementSize);
-        }
-
-        protected ArrayCluster(ArrayCluster<T> c) : base(c) {
-            _elementSize = c._elementSize;
-            _count = c._count;
+            _elements = new T[CalculateElementCount(elementSize, bytesPerCluster)];
         }
 
         #endregion
         #region Methods
 
-        protected abstract void WriteElement(T value, DataBlock byteBlock, int offset);
+        protected abstract void WriteElement(BinaryWriter writer, T value);
 
-        protected abstract T ReadElement(DataBlock byteBlock, int offset);
+        protected abstract T ReadElement(BinaryReader reader);
 
         public IEnumerator<T> GetEnumerator() {
-            for (int i = 0; i < _count; i++) yield return this[i];
+            for (int i = 0; i < _elements.Length; i++) yield return _elements[i];
         }
 
         IEnumerator IEnumerable.GetEnumerator() {
             return GetEnumerator();
+        }
+
+        protected override void Read(BinaryReader reader) {
+            base.Read(reader);
+
+            for (int i = 0; i < _elements.Length; i++) {
+                _elements[i] = ReadElement(reader);
+            }
+        }
+
+        protected override void Write(BinaryWriter writer) {
+            base.Write(writer);
+
+            for (int i = 0; i < _elements.Length; i++) {
+                WriteElement(writer, _elements[i]);
+            }
         }
 
         #endregion
@@ -135,7 +135,7 @@ namespace SRFS.Model.Clusters {
         #region Fields
 
         private int _elementSize;
-        private int _count;
+        private T[] _elements;
 
         #endregion
     }

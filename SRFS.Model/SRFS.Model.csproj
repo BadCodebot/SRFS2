@@ -53,37 +53,39 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Clusters\ICloneable.cs" />
-    <Compile Include="DataBlock.cs" />
+    <Compile Include="Clusters\DataCluster.cs" />
+    <Compile Include="Clusters\EmptyCluster.cs" />
+    <Compile Include="Clusters\ParityCluster.cs" />
     <Compile Include="ClusterState.cs" />
     <Compile Include="Clusters\ObjectArrayCluster.cs" />
     <Compile Include="Clusters\ArrayCluster.cs" />
     <Compile Include="Clusters\ClusterStatesCluster.cs" />
     <Compile Include="Clusters\Cluster.cs" />
     <Compile Include="Clusters\ClusterType.cs" />
-    <Compile Include="Clusters\FileEncryptionCluster.cs" />
     <Compile Include="Clusters\FileDataCluster.cs" />
     <Compile Include="Clusters\FileHeaderCluster.cs" />
     <Compile Include="Clusters\FileBaseCluster.cs" />
     <Compile Include="Clusters\VerifyTimesCluster.cs" />
-    <Compile Include="Clusters\IntArrayCluster.cs" />
+    <Compile Include="Clusters\Int32ArrayCluster.cs" />
     <Compile Include="Clusters\FileSystemHeaderCluster.cs" />
     <Compile Include="ClusterTable.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="CryptoSettings.cs" />
-    <Compile Include="Data\ByteArray.cs" />
     <Compile Include="Data\FileSystemObject.cs" />
     <Compile Include="Data\File.cs" />
     <Compile Include="Data\Directory.cs" />
+    <Compile Include="Data\PrivateKey.cs" />
     <Compile Include="Data\SrfsAuditRule.cs" />
     <Compile Include="Data\SrfsAccessRule.cs" />
     <Compile Include="Data\FileSystemObjectType.cs" />
     <Compile Include="Data\KeyThumbprint.cs" />
     <Compile Include="Data\PublicKey.cs" />
     <Compile Include="Data\Signature.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="FileIO.cs" />
     <Compile Include="FileSystem.cs" />
+    <Compile Include="FileSystemClusterIO.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="IClusterIO.cs" />
     <Compile Include="Options.cs" />
@@ -91,11 +93,16 @@
     <Compile Include="SharingException.cs" />
     <Compile Include="CachedClusterIO.cs" />
     <Compile Include="SimpleClusterIO.cs" />
+    <Compile Include="Track.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SRFS.IO\SRFS.IO.csproj">
       <Project>{9908b8e2-3202-437e-adcf-3db94c81a2b6}</Project>
       <Name>SRFS.IO</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SRFS.ReedSolomon\SRFS.ReedSolomon.csproj">
+      <Project>{6936d10e-277f-4b73-ad38-683d523c6c1b}</Project>
+      <Name>SRFS.ReedSolomon</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

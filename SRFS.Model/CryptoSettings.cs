@@ -20,6 +20,10 @@ namespace SRFS.Model {
             _encryptionKeyThumbprint = new Lazy<KeyThumbprint>(calculateEncryptionKeyThumbprint);
         }
 
+        public CngKey GetSignatureKey(KeyThumbprint thumbprint) {
+            return null;
+        }
+
         public CngKey DecryptionKey { get; private set; }
         public KeyThumbprint DecryptionKeyThumbprint => _decryptionKeyThumbprint.Value;
         private Lazy<KeyThumbprint> _decryptionKeyThumbprint;

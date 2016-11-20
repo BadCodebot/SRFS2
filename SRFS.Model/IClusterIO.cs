@@ -8,7 +8,7 @@ using SRFS.Model.Clusters;
 namespace SRFS.Model {
     public interface IClusterIO {
 
-        void Load(Cluster c);
+        Cluster Load(ClusterType type, int );
         void Save(Cluster c);
     }
 }

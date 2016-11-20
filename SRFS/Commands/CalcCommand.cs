@@ -47,7 +47,7 @@ namespace SRFS.Commands {
             Console.WriteLine($"Resiliency: {(double)g.ParityClustersPerTrack / g.ClustersPerTrack:%#0.00}");
             Console.WriteLine($"Total Tracks: {g.TrackCount}");
             Console.WriteLine($"Bytes Used: {(g.CalculateFileSystemSize(p.BytesPerBlock)).ToFileSize()}");
-            Console.WriteLine($"Bytes Available: {((long)g.DataClustersPerTrack * g.TrackCount * (g.BytesPerCluster - FileDataCluster.HeaderLength)).ToFileSize()}");
+            Console.WriteLine($"Bytes Available: {((long)g.DataClustersPerTrack * g.TrackCount * (g.BytesPerCluster - FileDataCluster.FileBaseClusterHeaderLength)).ToFileSize()}");
             Console.WriteLine($"Bytes Wasted: {(p.SizeBytes - g.CalculateFileSystemSize(p.BytesPerBlock)).ToFileSize()}");
         }
     }

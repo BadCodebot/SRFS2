@@ -1,0 +1,172 @@
+﻿<Window x:Class="TrackUtility.Dialogs.OpenFileSystemWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TrackUtility"
+        mc:Ignorable="d"
+        Title="Open SRFS FileSystem" Height="550" Width="500">
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Save"
+                        CanExecute="SaveCanExecute"
+                        Executed="SaveExecuted"/>
+    </Window.CommandBindings>
+    <Window.Resources>
+        <local:SizeConverter x:Key="sizeConverter"/>
+
+        <Style TargetType="TextBox">
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="true">
+                    <Setter Property="ToolTip" Value="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=(Validation.Errors)[0].ErrorContent}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <GroupBox Grid.Row="0" Header="Location" Margin="3">
+            <Grid Grid.Row="0" Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Label Grid.Row="0" Grid.Column="0">Drive:</Label>
+                <Label Grid.Row="0" Grid.Column="1">Partition:</Label>
+
+                <Grid Grid.Row="1" Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="3*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Image Grid.Row="1" Grid.Column="1" Source="HDD.png" Stretch="Uniform" HorizontalAlignment="Center" StretchDirection="Both"
+                   VerticalAlignment="Center" Opacity="0.05"/>
+                </Grid>
+
+                <Grid Grid.Row="1" Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="3*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Image Grid.Row="1" Grid.Column="1" Source="partition.jpg" Stretch="Uniform" HorizontalAlignment="Center" StretchDirection="Both"
+                   VerticalAlignment="Center" Margin="0,0,0,5" Opacity="0.05"/>
+                </Grid>
+
+                <ListView x:Name="driveListView" Grid.Row="1" Grid.Column="0" 
+                          SelectedItem="{Binding Drive, ValidatesOnDataErrors=True, UpdateSourceTrigger=PropertyChanged}"
+                          ItemsSource="{Binding AvailableDrives}" VerticalAlignment="Stretch" Margin="5,0,5,5" Background="#00FFFFFF"
+                          ToolTip="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=(Validation.Errors)[0].ErrorContent}">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=Name}" Width="auto"/>
+                            <GridViewColumn Header="Size" DisplayMemberBinding="{Binding Path=Size, Converter={StaticResource sizeConverter}}"  Width="auto"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+
+                <ListView x:Name="partitionListView" Grid.Row="1" Grid.Column="1" 
+                          SelectedItem="{Binding Partition, ValidatesOnDataErrors=True, UpdateSourceTrigger=PropertyChanged}"
+                          ItemsSource="{Binding SelectedItem.Partitions, ElementName=driveListView}" 
+                          VerticalAlignment="Stretch" Margin="5,0,5,5" Background="#00FFFFFF"
+                          ToolTip="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=(Validation.Errors)[0].ErrorContent}">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=DeviceID}" Width="auto"/>
+                            <GridViewColumn Header="Size" DisplayMemberBinding="{Binding Path=SizeBytes, Converter={StaticResource sizeConverter}}"  Width="auto"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="1" Header="Encryption Settings" Margin="3">
+            <GroupBox.Background>
+                <ImageBrush ImageSource="key.png" Stretch="Uniform" Opacity="0.05"/>
+            </GroupBox.Background>
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Label Grid.Row="0" Grid.Column="0">Key Folder:</Label>
+                <TextBox Grid.Row="0" Grid.Column="1" Margin="2" Background="#00FFFFFF"
+                         Text="{Binding KeyFolderPath, ValidatesOnDataErrors=True, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="0" Grid.Column="2" Margin="2" Padding="2" Click="SelectFolder_Button_Click">Select</Button>
+
+                <Label Grid.Row="1" Grid.Column="0">Decryption Key:</Label>
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="2" Background="#00FFFFFF"
+                         Text="{Binding DecryptionKeyPath, ValidatesOnDataErrors=True, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Row="1" Grid.Column="2" Margin="2" Padding="2" Click="SelectDecryptionKey_Button_Click">Select</Button>
+
+                <Grid Grid.Row="2" Grid.Column="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Column="0">Password:</Label>
+                    <PasswordBox x:Name="decryptionKeyPasswordBox" Grid.Column="1" Margin="2" Background="#00FFFFFF" HorizontalAlignment="Stretch"/>
+                </Grid>
+
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="2" Grid.Column="0" Header="Options" Margin="3">
+            <Grid>
+                <Grid Grid.Row="0" Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel x:Name="s" Grid.Row="0" Grid.Column="0">
+                        <CheckBox IsChecked="{Binding SkipHashVerification, UpdateSourceTrigger=PropertyChanged}" Margin="5">Skip Hash Verification</CheckBox>
+                        <CheckBox IsChecked="{Binding SkipSignatureVerification, UpdateSourceTrigger=PropertyChanged}" Margin="5">Skip Signature Verification</CheckBox>
+                    </StackPanel>
+                    <Rectangle Grid.Row="0" Grid.Column="1">
+                        <Rectangle.Fill>
+                            <ImageBrush ImageSource="options.png" Stretch="Uniform" Opacity="0.05"/>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                </Grid>
+            </Grid>
+        </GroupBox>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="3">
+            <Button Margin="2" Padding="2" Command="ApplicationCommands.Save" IsDefault="True">Open</Button>
+            <Button Margin="2" Padding="2" IsCancel="True">Cancel</Button>
+        </StackPanel>
+
+    </Grid>
+</Window>

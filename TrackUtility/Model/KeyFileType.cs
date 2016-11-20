@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SRFS.Model.Clusters {
-    public interface ICloneable<out T> {
-        T Clone();
+namespace TrackUtility.Model {
+
+    public enum KeyFileType : int {
+        Public,
+        Private
     }
 }

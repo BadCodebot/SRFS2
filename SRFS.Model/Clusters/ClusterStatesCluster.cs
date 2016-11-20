@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace SRFS.Model.Clusters {
 
@@ -7,34 +8,26 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Constructors
 
-        public ClusterStatesCluster(int address) : base(address, sizeof(ClusterState)) {
-            Type = ClusterType.ClusterStateTable;
+        public ClusterStatesCluster(int address, int clusterSizeBytes, Guid volumeID) :
+            base(address, clusterSizeBytes, volumeID, ClusterType.ClusterStateTable, sizeof(ClusterState)) {
         }
-
-        public ClusterStatesCluster(ClusterStatesCluster c) : base(c) { }
 
         #endregion
 
-        public static int ElementsPerCluster {
-            get {
-                if (!_elementsPerCluster.HasValue) _elementsPerCluster = CalculateElementCount(sizeof(byte));
-                return _elementsPerCluster.Value;
-            }
-        }
-
-        public override Cluster Clone() {
-            return new ClusterStatesCluster(this);
+        public static int CalculateElementsPerCluster(int clusterSizeBytes) {
+            if (!_elementsPerCluster.HasValue) _elementsPerCluster = CalculateElementCount(sizeof(byte), clusterSizeBytes);
+            return _elementsPerCluster.Value;
         }
 
         // Protected
         #region Methods
 
-        protected override void WriteElement(ClusterState value, DataBlock dataBlock, int offset) {
-            dataBlock.Set(offset, (byte)value);
+        protected override void WriteElement(BinaryWriter writer, ClusterState value) {
+            writer.Write(value);
         }
 
-        protected override ClusterState ReadElement(DataBlock dataBlock, int offset) {
-            return (ClusterState)dataBlock.ToByte(offset);
+        protected override ClusterState ReadElement(BinaryReader reader) {
+            return reader.ReadClusterState();
         }
 
         #endregion

@@ -56,6 +56,8 @@
     <Compile Include="Commands\MkfsCommand.cs" />
     <Compile Include="Commands\PartitionOptions.cs" />
     <Compile Include="Commands\FileRunCommand.cs" />
+    <Compile Include="Commands\TrackCommand.cs" />
+    <Compile Include="Commands\VerifyCommand.cs" />
     <Compile Include="Commands\RunCommand.cs" />
     <Compile Include="Commands\ReedSolomon.cs" />
     <Compile Include="Commands\ByteSize.cs" />
@@ -93,6 +95,10 @@
     <ProjectReference Include="..\SRFS.Model\SRFS.Model.csproj">
       <Project>{a6833bef-fe1e-43ac-923d-7abf4871c566}</Project>
       <Name>SRFS.Model</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SRFS.ReedSolomon\SRFS.ReedSolomon.csproj">
+      <Project>{6936d10e-277f-4b73-ad38-683d523c6c1b}</Project>
+      <Name>SRFS.ReedSolomon</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

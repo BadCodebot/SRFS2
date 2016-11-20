@@ -39,7 +39,7 @@ namespace SRFS.Model {
 
         public long CalculateTrackSizeBytes(int bytesPerBlock) {
             long dataClusterSize = (long)DataClustersPerTrack * BytesPerCluster;
-            long parityClusterHeader = (Cluster.HeaderLength + bytesPerBlock - 1) / bytesPerBlock * bytesPerBlock;
+            long parityClusterHeader = (Cluster.Cluster_HeaderLength + bytesPerBlock - 1) / bytesPerBlock * bytesPerBlock;
             long parityClusterSize = (ClustersPerTrack - DataClustersPerTrack) * (BytesPerCluster + parityClusterHeader);
             return dataClusterSize + parityClusterSize;
         }

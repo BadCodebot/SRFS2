@@ -23,7 +23,7 @@ namespace SRFS.Tests.Model.Clusters {
                 SimpleClusterIO cio = new SimpleClusterIO(io);
 
                 Random r = new Random();
-                IntArrayCluster csc = new IntArrayCluster(2);
+                Int32ArrayCluster csc = new Int32ArrayCluster(2);
                 csc.Initialize();
                 for (int i = 0; i < csc.Count; i++) csc[i] = r.Next();
                 csc.NextClusterAddress = Constants.NoAddress;
@@ -67,9 +67,9 @@ namespace SRFS.Tests.Model.Clusters {
                 for (int i = 0; i < csc.Count; i++) cs[i] = b.ToInt32(offset + i * sizeof(int));
                 Assert.IsTrue(cs.SequenceEqual(csc));
 
-                IntArrayCluster csc2 = new IntArrayCluster(2);
+                Int32ArrayCluster csc2 = new Int32ArrayCluster(2);
                 cio.Load(csc2);
-                Assert.AreEqual(csc.ID, csc2.ID);
+                Assert.AreEqual(csc.VolumeID, csc2.VolumeID);
                 Assert.AreEqual(csc.Type, csc2.Type);
                 Assert.AreEqual(csc.NextClusterAddress, csc2.NextClusterAddress);
 

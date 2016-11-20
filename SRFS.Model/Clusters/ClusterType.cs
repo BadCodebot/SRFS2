@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace SRFS.Model.Clusters {
 
@@ -15,6 +16,14 @@ namespace SRFS.Model.Clusters {
         AccessRulesTable,
         AuditRulesTable,
         FileHeader,
-        FileData
+        FileData,
+        Parity,
+        Empty
+    }
+
+    public static class ClusterTypeExtensions {
+
+        public static void Write(this BinaryWriter writer, ClusterType type) => writer.Write((byte)type);
+        public static ClusterType ReadClusterType(this BinaryReader reader) => (ClusterType)reader.ReadByte();
     }
 }

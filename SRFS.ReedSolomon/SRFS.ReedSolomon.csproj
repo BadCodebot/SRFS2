@@ -42,7 +42,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ReedSolomonParity.cs" />
+    <Compile Include="GF16.cs" />
+    <Compile Include="Repair.cs" />
+    <Compile Include="Syndrome.cs" />
+    <Compile Include="Parity.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

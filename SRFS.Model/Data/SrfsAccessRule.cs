@@ -2,6 +2,7 @@
 using System;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using System.IO;
 
 namespace SRFS.Model.Data {
 
@@ -30,26 +31,15 @@ namespace SRFS.Model.Data {
             _accessRule = rule;
         }
 
-        public SrfsAccessRule(DataBlock dataBlock, int offset) {
-            _type = (FileSystemObjectType)dataBlock.ToByte(offset);
-            offset += sizeof(byte);
+        public SrfsAccessRule(BinaryReader reader) {
+            _type = (FileSystemObjectType)reader.ReadByte();
+            _id = reader.ReadInt32();
 
-            _id = dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            SecurityIdentifier identityReference = dataBlock.ToSecurityIdentifier(offset);
-            offset += Constants.SecurityIdentifierLength;
-
-            FileSystemRights fileSystemRights = (FileSystemRights)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            InheritanceFlags inheritanceFlags = (InheritanceFlags)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            PropagationFlags propagationFlags = (PropagationFlags)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            AccessControlType accessControlType = (AccessControlType)dataBlock.ToInt32(offset);
+            SecurityIdentifier identityReference = reader.ReadSecurityIdentifier();
+            FileSystemRights fileSystemRights = (FileSystemRights)reader.ReadInt32();
+            InheritanceFlags inheritanceFlags = (InheritanceFlags)reader.ReadInt32();
+            PropagationFlags propagationFlags = (PropagationFlags)reader.ReadInt32();
+            AccessControlType accessControlType = (AccessControlType)reader.ReadInt32();
 
             _accessRule = new FileSystemAccessRule(identityReference, fileSystemRights, inheritanceFlags, propagationFlags, accessControlType);
         }
@@ -73,29 +63,25 @@ namespace SRFS.Model.Data {
         #endregion
         #region Methods
 
-        public static ObjectArrayCluster<SrfsAccessRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAccessRule>(address, ClusterType.AccessRulesTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAccessRule(block, offset));
+        public static ObjectArrayCluster<SrfsAccessRule> CreateArrayCluster(int address, int clusterSizeBytes, Guid volumeID) => 
+            new ObjectArrayCluster<SrfsAccessRule>(
+                address, 
+                clusterSizeBytes,
+                volumeID,
+                ClusterType.AccessRulesTable,
+                StorageLength, 
+                (writer, value) => value.Write(writer), 
+                (reader) => new SrfsAccessRule(reader),
+                (writer) => writer.Write(_zero));
 
-        public void Save(DataBlock dataBlock, int offset) {
-            dataBlock.Set(offset, (byte)_type);
-            offset += sizeof(byte);
-
-            dataBlock.Set(offset, _id);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (SecurityIdentifier)_accessRule.IdentityReference);
-            offset += Constants.SecurityIdentifierLength;
-
-            dataBlock.Set(offset, (int)_accessRule.FileSystemRights);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (int)_accessRule.InheritanceFlags);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (int)_accessRule.PropagationFlags);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (int)_accessRule.AccessControlType);
+        public void Write(BinaryWriter writer) {
+            writer.Write((byte)_type);
+            writer.Write(_id);
+            writer.Write((SecurityIdentifier)_accessRule.IdentityReference);
+            writer.Write((int)_accessRule.FileSystemRights);
+            writer.Write((int)_accessRule.InheritanceFlags);
+            writer.Write((int)_accessRule.PropagationFlags);
+            writer.Write((int)_accessRule.AccessControlType);
         }
 
         //--- IEquatable Implementation ---
@@ -125,6 +111,8 @@ namespace SRFS.Model.Data {
 
         // Private
         #region Fields
+
+        private static readonly byte[] _zero = new byte[StorageLength];
 
         private readonly FileSystemObjectType _type;
         private readonly int _id;

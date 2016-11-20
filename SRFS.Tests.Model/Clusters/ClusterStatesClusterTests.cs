@@ -68,7 +68,7 @@ namespace SRFS.Tests.Model.Clusters {
 
                 ClusterStatesCluster csc2 = new ClusterStatesCluster(2);
                 cio.Load(csc2);
-                Assert.AreEqual(csc.ID, csc2.ID);
+                Assert.AreEqual(csc.VolumeID, csc2.VolumeID);
                 Assert.AreEqual(csc.Type, csc2.Type);
                 Assert.AreEqual(csc.NextClusterAddress, csc2.NextClusterAddress);
 

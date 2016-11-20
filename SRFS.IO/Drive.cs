@@ -32,6 +32,9 @@ namespace SRFS.IO {
             }
         }
 
+        public override string ToString() {
+            return Name;
+        }
         public string Name {
             get {
                 if (_name == null) _name = (string)_managementObject.Properties["Name"].Value;

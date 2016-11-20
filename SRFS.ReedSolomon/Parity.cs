@@ -3,12 +3,12 @@ using System.Runtime.InteropServices;
 
 namespace SRFS.ReedSolomon {
 
-    public unsafe class ReedSolomonParity : IDisposable {
+    public unsafe class Parity : IDisposable {
 
         private const int BUFFER_ALIGNMENT = 16;
 
-        public ReedSolomonParity(uint nDataCodewords, uint nParityCodewords, uint codewordsPerSlice) {
-            _rsp = Parity_Construct(nDataCodewords, nParityCodewords, codewordsPerSlice);
+        public Parity(int nDataCodewords, int nParityCodewords, int codewordsPerSlice) {
+            _rsp = Parity_Construct((uint)nDataCodewords, (uint)nParityCodewords, (uint)codewordsPerSlice);
         }
 
         protected virtual void Dispose(bool disposing) {
@@ -19,7 +19,7 @@ namespace SRFS.ReedSolomon {
             }
         }
 
-        ~ReedSolomonParity() {
+        ~Parity() {
             Dispose(false);
         }
 
@@ -28,11 +28,29 @@ namespace SRFS.ReedSolomon {
             GC.SuppressFinalize(this);
         }
 
-        public void Calculate(byte[] data, int offset, uint codewordIndex) {
-            fixed (byte* pData = data) Parity_Calculate(_rsp, pData + offset, codewordIndex);
+        public void Calculate(byte[] data, int offset, int exponent) {
+            fixed (byte* pData = data) {
+                Parity_Calculate(_rsp, (ushort*)(pData + offset), (uint)exponent);
+            }
         }
 
-        private byte* Parity => Parity_GetFirstParityBlock(_rsp);
+        public void Calculate(ushort[] data, int offset, int exponent) {
+            fixed (ushort* pData = data) {
+                Parity_Calculate(_rsp, pData + offset, (uint)exponent);
+            }
+        }
+
+        public void GetParity(byte[] data, int offset, int exponent) {
+            fixed (byte* pData = data) {
+                Parity_GetParity(_rsp, (ushort*)(pData + offset), (uint)exponent);
+            }
+        }
+
+        public void GetParity(ushort[] data, int offset, int exponent) {
+            fixed (ushort* pData = data) {
+                Parity_GetParity(_rsp, pData + offset, (uint)exponent);
+            }
+        }
 
         public uint NParityCodeWords => Parity_GetNParityCodewords(_rsp);
 
@@ -41,6 +59,8 @@ namespace SRFS.ReedSolomon {
         public uint NParityBlocks => Parity_GetNParityBlocks(_rsp);
 
         public uint CodewordsPerSlice => Parity_GetCodewordsPerSlice(_rsp);
+
+        internal IntPtr InternalPointer => _rsp;
 
         private bool isDisposed = false;
         private IntPtr _rsp;
@@ -52,7 +72,10 @@ namespace SRFS.ReedSolomon {
         private static extern void Parity_Destruct(IntPtr rsc);
 
         [DllImport("ReedSolomon.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Parity_Calculate(IntPtr rsc, byte* data, uint codewordIndex);
+        private static extern void Parity_Calculate(IntPtr rsc, ushort* data, uint exponent);
+
+        [DllImport("ReedSolomon.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void Parity_GetParity(IntPtr rsc, ushort* data, uint exponent);
 
         [DllImport("ReedSolomon.dll", CallingConvention = CallingConvention.Cdecl)]
         private static extern void Parity_Reset(IntPtr rsc);

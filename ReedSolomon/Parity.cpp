@@ -68,7 +68,33 @@ namespace ReedSolomon {
 		}
 	}
 
+	void Parity::GetParity(size_t parityIndex, char* data) {
+		size_t parityBlock = parityIndex / 8;
+		uint16_t* p = (uint16_t*)(_parity + _codewordsPerSlice * parityBlock) + parityIndex % 8;
+		uint16_t* dest = (uint16_t*)data;
+		for (int i = 0; i < _codewordsPerSlice; i++, dest++, p += 8) {
+			*dest = *p;
+		}
+	}
+
+
 	Parity* Parity_Construct(size_t nDataCodewords, size_t nParityCodewords, size_t codewordsPerSlice) {
 		return new Parity(nDataCodewords, nParityCodewords, codewordsPerSlice);
 	}
+
+	void Parity_Destruct(Parity* p) { delete p; }
+
+	void Parity_Reset(Parity* p) { p->Reset(); }
+
+	void Parity_Calculate(Parity* p, char* data, size_t codewordIndex) { p->Calculate(data, codewordIndex); }
+
+	void Parity_GetParity(Parity* p, size_t parityIndex, char* data) { p->GetParity(parityIndex, data); }
+
+	size_t Parity_GetNParityCodewords(Parity* p) { return p->GetNParityCodewords(); }
+
+	size_t Parity_GetNDataCodewords(Parity* p) { return p->GetNDataCodewords(); }
+
+	size_t Parity_GetCodewordsPerSlice(Parity* p) { return p->GetCodewordsPerSlice(); }
+
+	char* Parity_GetFirstParityBlock(Parity* p) { return (char*)p->GetFirstParityBlock(); }
 }

@@ -1,31 +1,70 @@
 ﻿using System;
 using System.Security.Cryptography;
+using System.IO;
 
 namespace SRFS.Model.Data {
 
-    public class PublicKey : ByteArray<PublicKey> {
+    public class PublicKey {
 
         #region Constructor
 
-        public PublicKey() : base(new byte[Length], 0, Length) { }
+        public PublicKey(byte[] bytes, int offset = 0) {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
+            if (offset + Length > bytes.Length) throw new ArgumentException();
 
+            _bytes = new byte[Length];
+            Buffer.BlockCopy(bytes, offset, _bytes, 0, Length);
 
-        public PublicKey(byte[] bytes, int offset = 0) : base(bytes, offset, Length) {
-            if (bytes.Length != Length) throw new ArgumentException();
+            _key = null;
+
+            _thumbprint = null;
         }
 
-        public PublicKey(ECDiffieHellmanCng key) : this(key.PublicKey.ToByteArray()) { }
+        //public PublicKey(ECDiffieHellmanCng key) {
+        //    if (key == null) throw new ArgumentNullException(nameof(key));
+
+        //    _bytes = key.PublicKey.ToByteArray();
+
+        //    _key = key;
+
+        //    _thumbprint = null;
+        //}
 
         #endregion
         #region Properties
 
         public const int Length = 140;
 
-        #endregion
-        #region Methods
+        public byte[] Bytes => _bytes;
 
-        public CngKey GetCngKey() => CngKey.Import(Bytes, CngKeyBlobFormat.EccPublicBlob);
+        public CngKey Key {
+            get {
+                if (_key == null) _key = CngKey.Import(Bytes, CngKeyBlobFormat.EccPublicBlob);
+                return _key;
+            }
+        }
+
+        public KeyThumbprint Thumbprint {
+            get {
+                if (_thumbprint == null) _thumbprint = new KeyThumbprint(_bytes);
+                return _thumbprint;
+            }
+        }
 
         #endregion
+        #region Fields
+
+        private byte[] _bytes = null;
+        private CngKey _key = null;
+        private KeyThumbprint _thumbprint = null;
+
+        #endregion
+    }
+
+    public static class PublicKeyExtensions {
+
+        public static PublicKey ReadPublicKey(this BinaryReader reader) {
+            return new PublicKey(reader.ReadBytes(PublicKey.Length));
+        }
     }
 }

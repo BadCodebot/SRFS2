@@ -9,16 +9,19 @@ namespace SRFS.Model {
 
     [Flags]
     public enum ClusterState : byte {
-        Unused = 0x00,
-        Used = 0x01,
+        None = 0x00,
+        Data = 0x01,
         Parity = 0x02,
-        Modified = 0x04,
-        System = 0x08,
-        Null = 0x16
+        System = 0x04,
+        Unwritten = 0x08,
+        Modified = 0x10,
+        Used = 0x20,
+        Null = 0x40
     }
 
     public static class ClusterStateExtensions {
 
+        public static bool IsUnwritten(this ClusterState s) => (s & ClusterState.Unwritten) != 0;
         public static bool IsUsed(this ClusterState s) => (s & ClusterState.Used) != 0;
         public static bool IsModified(this ClusterState s) => (s & ClusterState.Modified) != 0;
         public static bool IsParity(this ClusterState s) => (s & ClusterState.Parity) != 0;

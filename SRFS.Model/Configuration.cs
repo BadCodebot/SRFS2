@@ -15,60 +15,60 @@ namespace SRFS.Model {
             _volumeName = null;
         }
 
-        public static Geometry Geometry {
-            get {
-                if (!IsGeometryInitialized) throw new InvalidOperationException();
-                return _geometry;
-            }
-            set {
-                if (IsGeometryInitialized) throw new InvalidOperationException();
-                _geometry = value;
-            }
-        }
+        //public static Geometry Geometry {
+        //    get {
+        //        if (!IsGeometryInitialized) throw new InvalidOperationException();
+        //        return _geometry;
+        //    }
+        //    set {
+        //        if (IsGeometryInitialized) throw new InvalidOperationException();
+        //        _geometry = value;
+        //    }
+        //}
 
-        public static Guid FileSystemID {
-            get {
-                if (!IsFileSystemIDInitialized) throw new InvalidOperationException();
-                return _fileSystemID.Value;
-            }
-            set {
-                if (IsFileSystemIDInitialized) throw new InvalidOperationException();
-                _fileSystemID = value;
-            }
-        }
+        //public static Guid FileSystemID {
+        //    get {
+        //        if (!IsFileSystemIDInitialized) throw new InvalidOperationException();
+        //        return _fileSystemID.Value;
+        //    }
+        //    set {
+        //        if (IsFileSystemIDInitialized) throw new InvalidOperationException();
+        //        _fileSystemID = value;
+        //    }
+        //}
 
-        public static CryptoSettings CryptoSettings {
-            get {
-                if (!IsCryptoSettingsInitialized) throw new InvalidOperationException();
-                return _cryptoSettings;
-            }
-            set {
-                if (IsCryptoSettingsInitialized) throw new InvalidOperationException();
-                _cryptoSettings = value;
-            }
-        }
+        //public static CryptoSettings CryptoSettings {
+        //    get {
+        //        if (!IsCryptoSettingsInitialized) throw new InvalidOperationException();
+        //        return _cryptoSettings;
+        //    }
+        //    set {
+        //        if (IsCryptoSettingsInitialized) throw new InvalidOperationException();
+        //        _cryptoSettings = value;
+        //    }
+        //}
 
-        public static Options Options {
-            get {
-                if (!IsOptionsInitialized) throw new InvalidOperationException();
-                return _options.Value;
-            }
-            set {
-                if (IsOptionsInitialized) throw new InvalidOperationException();
-                _options = value;
-            }
-        }
+        //public static Options Options {
+        //    get {
+        //        if (!IsOptionsInitialized) throw new InvalidOperationException();
+        //        return _options.Value;
+        //    }
+        //    set {
+        //        if (IsOptionsInitialized) throw new InvalidOperationException();
+        //        _options = value;
+        //    }
+        //}
 
-        public static string VolumeName {
-            get {
-                if (!IsVolumeNameInitialized) throw new InvalidOperationException();
-                return _volumeName;
-            }
-            set {
-                if (IsVolumeNameInitialized) throw new InvalidOperationException();
-                _volumeName = value;
-            }
-        }
+        //public static string VolumeName {
+        //    get {
+        //        if (!IsVolumeNameInitialized) throw new InvalidOperationException();
+        //        return _volumeName;
+        //    }
+        //    set {
+        //        if (IsVolumeNameInitialized) throw new InvalidOperationException();
+        //        _volumeName = value;
+        //    }
+        //}
 
         public static bool IsVolumeNameInitialized => _volumeName != null;
 

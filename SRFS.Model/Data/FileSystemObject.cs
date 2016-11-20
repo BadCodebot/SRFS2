@@ -6,6 +6,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Security.AccessControl;
 using System.Diagnostics;
+using System.Text;
 
 namespace SRFS.Model.Data {
 
@@ -143,79 +144,46 @@ namespace SRFS.Model.Data {
         private SecurityIdentifier _owner;
         private SecurityIdentifier _group;
 
-        public virtual void Save(DataBlock dataBlock, int offset) {
-            dataBlock.Set(offset, ID);
-            offset += sizeof(int);
+        private const int IDOffset = 0;
+        private const int IDLength = sizeof(int);
 
-            Debug.Assert(Name.Length <= byte.MaxValue);
-            dataBlock.Set(offset, (byte)Name.Length);
-            offset += sizeof(byte);
+        private const int NameLengthOffset = IDOffset + IDLength;
+        private const int NameLengthLength = sizeof(byte);
 
-            dataBlock.Set(offset, Name);
-            dataBlock.Clear(offset + Name.Length * sizeof(char), (Constants.MaximumNameLength - Name.Length) * sizeof(char));
-            offset += Constants.MaximumNameLength * sizeof(char);
+        private const int NameOffset = NameLengthOffset + NameLengthLength;
+        private const int NameLength = Constants.MaximumNameLength * sizeof(char);
 
-            dataBlock.Set(offset, ParentID);
-            offset += sizeof(int);
+        private const int ParentIDOffset = NameOffset + NameLength;
+        private const int ParentIDLength = sizeof(int);
 
-            dataBlock.Set(offset, (int)Attributes);
-            offset += sizeof(int);
+        private const int AttributesOffset = ParentIDOffset + ParentIDLength;
+        private const int AttributesLength = sizeof(int);
 
-            dataBlock.Set(offset, LastWriteTime.Ticks);
-            offset += sizeof(long);
+        private const int LastWriteTimeOffset = AttributesOffset + AttributesLength;
+        private const int LastWriteTimeLength = sizeof(long);
 
-            dataBlock.Set(offset, CreationTime.Ticks);
-            offset += sizeof(long);
-
-            dataBlock.Set(offset, LastAccessTime.Ticks);
-            offset += sizeof(long);
-
-            dataBlock.Set(offset, Owner);
-            offset += Constants.SecurityIdentifierLength;
-
-            dataBlock.Set(offset, Group);
+        public virtual void Write(BinaryWriter writer) {
+            writer.Write(ID);
+            writer.WriteSrfsString(Name);
+            writer.Write(ParentID);
+            writer.Write(Attributes);
+            writer.Write(LastWriteTime);
+            writer.Write(CreationTime);
+            writer.Write(LastAccessTime);
+            writer.Write(Owner);
+            writer.Write(Group);
         }
 
-        protected FileSystemObject(DataBlock dataBlock, int offset) {
-            int id = dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            int nameLength = dataBlock.ToByte(offset);
-            offset += sizeof(byte);
-
-            string name = dataBlock.ToString(offset, nameLength);
-            offset += Constants.MaximumNameLength * sizeof(char);
-
-            int parentID = dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            FileAttributes attributes = (FileAttributes)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            DateTime lastWriteTime = new DateTime(dataBlock.ToInt64(offset));
-            offset += sizeof(long);
-
-            DateTime creationTime = new DateTime(dataBlock.ToInt64(offset));
-            offset += sizeof(long);
-
-            DateTime lastAccessTime = new DateTime(dataBlock.ToInt64(offset));
-            offset += sizeof(long);
-
-            SecurityIdentifier owner = dataBlock.ToSecurityIdentifier(offset);
-            offset += Constants.SecurityIdentifierLength;
-
-            SecurityIdentifier group = dataBlock.ToSecurityIdentifier(offset);
-            offset += Constants.SecurityIdentifierLength;
-
-            _id = id;
-            _name = name;
-            _parentID = parentID;
-            _attributes = attributes;
-            _lastWriteTime = lastWriteTime;
-            _creationTime = creationTime;
-            _lastAccessTime = lastAccessTime;
-            _owner = owner;
-            _group = group;
+        protected FileSystemObject(BinaryReader reader) {
+            _id = reader.ReadInt32();
+            _name = reader.ReadSrfsString();
+            _parentID = reader.ReadInt32();
+            _attributes = reader.ReadFileAttributes();
+            _lastWriteTime = reader.ReadDateTime();
+            _creationTime = reader.ReadDateTime();
+            _lastAccessTime = reader.ReadDateTime();
+            _owner = reader.ReadSecurityIdentifier();
+            _group = reader.ReadSecurityIdentifier();
         }
 
         protected const int FileSystemEntryStorageLength =

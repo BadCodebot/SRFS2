@@ -64,6 +64,7 @@ namespace SRFS {
                 last = v;
             }
             if (inRange) sb.Append($"-{last}");
+            if (first) sb.Append("none");
             return sb.ToString();
         }
     }

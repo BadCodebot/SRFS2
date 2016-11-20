@@ -2,13 +2,22 @@
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System;
+using System.IO;
 
 namespace SRFS.Model.Data {
 
     public class SrfsAuditRule : IEquatable<SrfsAuditRule> {
 
-        public static ObjectArrayCluster<SrfsAuditRule> CreateArrayCluster(int address) => new ObjectArrayCluster<SrfsAuditRule>(address, ClusterType.AuditRulesTable,
-            StorageLength, (block, offset, value) => value.Save(block, offset), (block, offset) => new SrfsAuditRule(block, offset));
+        public static ObjectArrayCluster<SrfsAuditRule> CreateArrayCluster(int address, int clusterSizeBytes, Guid volumeID) => 
+            new ObjectArrayCluster<SrfsAuditRule>(
+                address, 
+                clusterSizeBytes,
+                volumeID,
+                ClusterType.AuditRulesTable,
+                StorageLength, 
+                (writer, value) => value.Write(writer),
+                (reader) => new SrfsAuditRule(reader),
+                (writer) => writer.Write(_zero));
 
         public SrfsAuditRule(FileSystemObjectType type, int id, FileSystemAuditRule rule) {
             _type = type;
@@ -49,26 +58,15 @@ namespace SRFS.Model.Data {
             return _id.GetHashCode();
         }
 
-        public SrfsAuditRule(DataBlock dataBlock, int offset) {
-            _type = (FileSystemObjectType)dataBlock.ToByte(offset);
-            offset += sizeof(byte);
+        public SrfsAuditRule(BinaryReader reader) {
+            _type = (FileSystemObjectType)reader.ReadByte();
+            _id = reader.ReadInt32();
 
-            _id = dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            SecurityIdentifier identityReference = dataBlock.ToSecurityIdentifier(offset);
-            offset += Constants.SecurityIdentifierLength;
-
-            FileSystemRights fileSystemRights = (FileSystemRights)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            InheritanceFlags inheritanceFlags = (InheritanceFlags)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            PropagationFlags propagationFlags = (PropagationFlags)dataBlock.ToInt32(offset);
-            offset += sizeof(int);
-
-            AuditFlags auditFlags = (AuditFlags)dataBlock.ToInt32(offset);
+            SecurityIdentifier identityReference = reader.ReadSecurityIdentifier();
+            FileSystemRights fileSystemRights = (FileSystemRights)reader.ReadInt32();
+            InheritanceFlags inheritanceFlags = (InheritanceFlags)reader.ReadInt32();
+            PropagationFlags propagationFlags = (PropagationFlags)reader.ReadInt32();
+            AuditFlags auditFlags = (AuditFlags)reader.ReadInt32();
 
             _auditRule = new FileSystemAuditRule(identityReference, fileSystemRights, inheritanceFlags, propagationFlags, auditFlags);
         }
@@ -86,27 +84,18 @@ namespace SRFS.Model.Data {
             sizeof(int) + // Propagation Flags
             sizeof(int); // Audit Flags
 
-        public void Save(DataBlock dataBlock, int offset) {
-            dataBlock.Set(offset, (byte)_type);
-            offset += sizeof(byte);
+        public void Write(BinaryWriter writer) {
+            writer.Write((byte)_type);
+            writer.Write(_id);
 
-            dataBlock.Set(offset, _id);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (SecurityIdentifier)_auditRule.IdentityReference);
-            offset += Constants.SecurityIdentifierLength;
-
-            dataBlock.Set(offset, (int)_auditRule.FileSystemRights);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (int)_auditRule.InheritanceFlags);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (int)_auditRule.PropagationFlags);
-            offset += sizeof(int);
-
-            dataBlock.Set(offset, (int)_auditRule.AuditFlags);
+            writer.Write((SecurityIdentifier)_auditRule.IdentityReference);
+            writer.Write((int)_auditRule.FileSystemRights);
+            writer.Write((int)_auditRule.InheritanceFlags);
+            writer.Write((int)_auditRule.PropagationFlags);
+            writer.Write((int)_auditRule.AuditFlags);
         }
+
+        private static readonly byte[] _zero = new byte[StorageLength];
 
         private readonly FileSystemObjectType _type;
         private readonly int _id;

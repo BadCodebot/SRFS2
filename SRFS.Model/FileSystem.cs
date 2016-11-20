@@ -1,270 +1,149 @@
 ﻿using SRFS.IO;
+using SRFS.Model.Clusters;
+using SRFS.Model.Data;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Security.AccessControl;
+using System.Security.Cryptography;
+using System.Security.Principal;
+using DirectoryNotFoundException = System.IO.DirectoryNotFoundException;
 using IOException = System.IO.IOException;
 using Path = System.IO.Path;
-using DirectoryNotFoundException = System.IO.DirectoryNotFoundException;
-using System.Diagnostics;
-using System.Threading;
-using Stream = System.IO.Stream;
-using SRFS.Model.Clusters;
-using SeekOrigin = System.IO.SeekOrigin;
-using BinaryWriter = System.IO.BinaryWriter;
-using BinaryReader = System.IO.BinaryReader;
-using SRFS.Model.Data;
-using System.Linq;
-using log4net;
-using System.Security.Principal;
-using System.Security.AccessControl;
-using System.Collections.ObjectModel;
 
 namespace SRFS.Model {
 
     public class FileSystem : IDisposable {
 
+        // Public
         #region Construction / Destruction
 
-        public static FileSystem Create(IBlockIO deviceIO) {
-            FileSystem fileSystem = new FileSystem(deviceIO);
-            fileSystem.create();
-            return fileSystem;
-        }
+        /// <summary>
+        /// Open a file system.
+        /// </summary>
+        /// <param name="partition"></param>
+        /// <param name="signatureKeys"></param>
+        /// <param name="decryptionKey"></param>
+        /// <param name="options"></param>
+        public FileSystem(IBlockIO device, Dictionary<KeyThumbprint,PublicKey> signatureKeys, PrivateKey decryptionKey, Options options) {
+            _keys = new Dictionary<Signature, CngKey>();
+            foreach (var p in _keys) _keys.Add(p.Key, p.Value);
 
-        public static FileSystem Mount(IBlockIO deviceIO) {
-            FileSystem fileSystem = new FileSystem(deviceIO);
-            fileSystem.mount();
-            return fileSystem;
-        }
+            _decryptionKey = decryptionKey;
 
-        private FileSystem(IBlockIO deviceIO) {
-            _deviceIO = deviceIO;
+            _options = options;
 
+            _readOnly = true;
+
+            // Create IO Devices
+            _deviceIO = device;
+            _clusterIO = new FileSystemClusterIO(this, _deviceIO);
+            _disposeDeviceIO = true;
+
+            // Initialize Indices
             _freeClusterSearchStart = 0;
-
             _nextEntryID = 0;
-
             _nextDirectoryIndex = 0;
             _nextFileIndex = 0;
             _nextAccessRuleIndex = 0;
             _nextAuditRuleIndex = 0;
 
+            // Create Indexes
             _directoryIndex = new Dictionary<int, int>();
-
             _containedDirectoriesIndex = new Dictionary<int, SortedList<string, Directory>>();
             _containedFilesIndex = new Dictionary<int, SortedList<string, File>>();
-
             _fileIndex = new Dictionary<int, int>();
-
             _accessRulesIndex = new Dictionary<int, List<int>>();
-
             _auditRulesIndex = new Dictionary<int, List<int>>();
-        }
 
-        private void create() {
-
-            // Write the Partition Cluster
-            FileSystemHeaderCluster fileSystemHeaderCluster = new FileSystemHeaderCluster(_deviceIO.BlockSizeBytes);
-            fileSystemHeaderCluster.Initialize();
-            byte[] header = new byte[fileSystemHeaderCluster.SizeBytes];
-            fileSystemHeaderCluster.Save(header, 0);
-            _deviceIO.Write(0, header, 0, header.Length);
-
-            // Create IO Devices
-            _clusterIO = new FileSystemClusterIO(this, _deviceIO);
-
-            // Cluster State Table
-            int entryCount = Configuration.Geometry.ClustersPerTrack * Configuration.Geometry.TrackCount;
-            int clusterCount = (entryCount + ClusterStatesCluster.ElementsPerCluster - 1) / ClusterStatesCluster.ElementsPerCluster;
-
-            _clusterStateTable = new ClusterTable<ClusterState>(
-                Enumerable.Range(0, clusterCount),
-                sizeof(ClusterState),
-                (address) => new ClusterStatesCluster(address));
-
-            // Next Cluster Address Table
-            entryCount = Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
-            clusterCount = (entryCount + IntArrayCluster.ElementsPerCluster - 1) / IntArrayCluster.ElementsPerCluster;
-
-            _nextClusterAddressTable = new ClusterTable<int>(
-                Enumerable.Range(_clusterStateTable.ClusterAddresses.Last() + 1, clusterCount),
-                sizeof(int),
-                (address) => new IntArrayCluster(address) { Type = ClusterType.NextClusterAddressTable });
-
-            // Bytes Used Table
-            _bytesUsedTable = new ClusterTable<int>(
-                Enumerable.Range(_nextClusterAddressTable.ClusterAddresses.Last() + 1, clusterCount),
-                sizeof(int),
-                 (address) => new IntArrayCluster(address) { Type = ClusterType.BytesUsedTable });
-
-            entryCount = Configuration.Geometry.ClustersPerTrack * Configuration.Geometry.TrackCount;
-            clusterCount = (entryCount + VerifyTimesCluster.ElementsPerCluster - 1) / VerifyTimesCluster.ElementsPerCluster;
-
-            // Verify Time Table
-            _verifyTimeTable = new ClusterTable<DateTime>(
-                Enumerable.Range(_bytesUsedTable.ClusterAddresses.Last() + 1, clusterCount),
-                sizeof(long),
-                 (address) => new VerifyTimesCluster(address));
-
-            // Directory Table
-            _directoryTable = new MutableObjectClusterTable<Directory>(
-                new int[] { _verifyTimeTable.ClusterAddresses.Last() + 1 },
-                Directory.StorageLength,
-                (address) => Directory.CreateArrayCluster(address));
-
-            // File Table
-            _fileTable = new MutableObjectClusterTable<File>(
-                new int[] { _directoryTable.ClusterAddresses.Last() + 1 },
-                File.StorageLength,
-                (address) => File.CreateArrayCluster(address));
-
-            // Access Rules Table
-            _accessRules = new ClusterTable<SrfsAccessRule>(
-                new int[] { _fileTable.ClusterAddresses.Last() + 1 },
-                SrfsAccessRule.StorageLength + sizeof(bool),
-                (address) => SrfsAccessRule.CreateArrayCluster(address));
-
-            // Audit Rules Table
-            _auditRules = new ClusterTable<SrfsAuditRule>(
-                new int[] { _accessRules.ClusterAddresses.Last() + 1 },
-                SrfsAuditRule.StorageLength + sizeof(bool),
-                (address) => SrfsAuditRule.CreateArrayCluster(address));
-
-            // Initialize the tables
-            int nDataClusters = Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
-            int nParityClusters = Configuration.Geometry.ParityClustersPerTrack * Configuration.Geometry.TrackCount;
-
-            for (int i = 0; i < nDataClusters; i++) _clusterStateTable[i] = ClusterState.Unused;
-            for (int i = nDataClusters; i < nDataClusters + nParityClusters; i++) _clusterStateTable[i] = ClusterState.Parity;
-            for (int i = nDataClusters + nParityClusters; i < _clusterStateTable.Count; i++) _clusterStateTable[i] = ClusterState.Null;
-
-            for (int i = 0; i < _clusterStateTable.Count; i++) _clusterStateTable[i] = ClusterState.Unused;
-            for (int i = 0; i < _nextClusterAddressTable.Count; i++) _nextClusterAddressTable[i] = Constants.NoAddress;
-            for (int i = 0; i < _bytesUsedTable.Count; i++) _bytesUsedTable[i] = 0;
-            for (int i = 0; i < _verifyTimeTable.Count; i++) _verifyTimeTable[i] = DateTime.MinValue;
-            for (int i = 0; i < _directoryTable.Count; i++) _directoryTable[i] = null;
-            for (int i = 0; i < _fileTable.Count; i++) _fileTable[i] = null;
-            for (int i = 0; i < _accessRules.Count; i++) _accessRules[i] = null;
-            for (int i = 0; i < _auditRules.Count; i++) _auditRules[i] = null;
-
-            // Update the cluster state and next cluster address tables
-            foreach (var t in new IEnumerable<int>[] {
-                _clusterStateTable.ClusterAddresses,
-                _nextClusterAddressTable.ClusterAddresses,
-                _bytesUsedTable.ClusterAddresses,
-                _verifyTimeTable.ClusterAddresses,
-                _directoryTable.ClusterAddresses,
-                _fileTable.ClusterAddresses,
-                _accessRules.ClusterAddresses,
-                _auditRules.ClusterAddresses
-            }) {
-                foreach (var n in t) {
-                    _clusterStateTable[n] = ClusterState.System | ClusterState.Used;
-                    _nextClusterAddressTable[n] = n + 1;
-                }
-                _nextClusterAddressTable[t.Last()] = Constants.NoAddress;
-            }
-
-            // Create the root directory
-            Directory dir = CreateDirectory(null, "");
-            dir.Owner = WindowsIdentity.GetCurrent().User;
-            dir.Group = WindowsIdentity.GetCurrent().User;
-            //dir.Group = new SecurityIdentifier(WellKnownSidType.NullSid, null);
-            AddAccessRule(dir, new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
-                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None,
-                AccessControlType.Allow));
-
-            Flush();
-        }
-
-        private void mount() {
-
-            // Read the Partition Cluster
-            FileSystemHeaderCluster fileSystemHeaderCluster = new FileSystemHeaderCluster(_deviceIO.BlockSizeBytes);
-            byte[] header = new byte[fileSystemHeaderCluster.SizeBytes];
+            // Read the File System Header Cluster
+            FileSystemHeaderCluster fileSystemHeaderCluster = new FileSystemHeaderCluster(_deviceIO.BlockSizeBytes, Guid.Empty);
+            byte[] header = new byte[FileSystemHeaderCluster.CalculateClusterSize(_deviceIO.BlockSizeBytes)];
             _deviceIO.Read(0, header, 0, header.Length);
-            fileSystemHeaderCluster.Load(header, 0);
+            fileSystemHeaderCluster.Load(header, 0, signatureKeys, options);
 
-            Configuration.Geometry = new Geometry(
-                fileSystemHeaderCluster.BytesPerCluster,
+            // Initialize values from the File System Header Cluster
+            _geometry = new Geometry(
+                fileSystemHeaderCluster.BytesPerDataCluster,
                 fileSystemHeaderCluster.ClustersPerTrack,
                 fileSystemHeaderCluster.DataClustersPerTrack,
                 fileSystemHeaderCluster.TrackCount);
-            Configuration.VolumeName = fileSystemHeaderCluster.VolumeName;
-            Configuration.FileSystemID = fileSystemHeaderCluster.ID;
+            _volumeName = fileSystemHeaderCluster.VolumeName;
+            _volumeID = fileSystemHeaderCluster.VolumeID;
 
-            // Create IO Devices
-            _clusterIO = new FileSystemClusterIO(this, _deviceIO);
-
-            // Cluster State Table
-            int entryCount = Configuration.Geometry.ClustersPerTrack * Configuration.Geometry.TrackCount;
-            int clusterCount = (entryCount + ClusterStatesCluster.ElementsPerCluster - 1) / ClusterStatesCluster.ElementsPerCluster;
+            // Initialize the Cluster State Table
+            int entryCount = _geometry.ClustersPerTrack * _geometry.TrackCount;
+            int clusterCount = (entryCount + ClusterStatesCluster.CalculateElementsPerCluster(_geometry.BytesPerCluster) - 1) / 
+                ClusterStatesCluster.CalculateElementsPerCluster(_geometry.BytesPerCluster);
 
             _clusterStateTable = new ClusterTable<ClusterState>(
                 Enumerable.Range(0, clusterCount),
                 sizeof(ClusterState),
-                (address) => new ClusterStatesCluster(address));
+                (address) => new ClusterStatesCluster(address, _geometry.BytesPerCluster, _volumeID));
             _clusterStateTable.Load(_clusterIO);
 
-            // Next Cluster Address Table
-            entryCount = Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
-            clusterCount = (entryCount + IntArrayCluster.ElementsPerCluster - 1) / IntArrayCluster.ElementsPerCluster;
+            // Initialize the Next Cluster Address Table
+            entryCount = _geometry.DataClustersPerTrack * _geometry.TrackCount;
+            clusterCount = (entryCount + Int32ArrayCluster.CalculateElementsPerCluster(_geometry.BytesPerCluster) - 1) / 
+                Int32ArrayCluster.CalculateElementsPerCluster(_geometry.BytesPerCluster);
 
             _nextClusterAddressTable = new ClusterTable<int>(
                 Enumerable.Range(_clusterStateTable.ClusterAddresses.Last() + 1, clusterCount),
                 sizeof(int),
-                (address) => new IntArrayCluster(address) { Type = ClusterType.NextClusterAddressTable });
+                (address) => new Int32ArrayCluster(address, _geometry.BytesPerCluster, _volumeID, ClusterType.NextClusterAddressTable));
             _nextClusterAddressTable.Load(_clusterIO);
 
-            // Bytes Used Table
+            // Initialize the Bytes Used Table
             _bytesUsedTable = new ClusterTable<int>(
                 Enumerable.Range(_nextClusterAddressTable.ClusterAddresses.Last() + 1, clusterCount),
                 sizeof(int),
-                 (address) => new IntArrayCluster(address) { Type = ClusterType.BytesUsedTable });
+                 (address) => new Int32ArrayCluster(address, _geometry.BytesPerCluster, _volumeID, ClusterType.BytesUsedTable ));
             _bytesUsedTable.Load(_clusterIO);
 
-            entryCount = Configuration.Geometry.ClustersPerTrack * Configuration.Geometry.TrackCount;
-            clusterCount = (entryCount + VerifyTimesCluster.ElementsPerCluster - 1) / VerifyTimesCluster.ElementsPerCluster;
+            entryCount = _geometry.ClustersPerTrack * _geometry.TrackCount;
+            clusterCount = (entryCount + VerifyTimesCluster.CalculateElementsPerCluster(_geometry.BytesPerCluster) - 1) / 
+                VerifyTimesCluster.CalculateElementsPerCluster(_geometry.BytesPerCluster);
 
-            // Verify Time Table
+            // Initialize the Verify Time Table
             _verifyTimeTable = new ClusterTable<DateTime>(
                 Enumerable.Range(_bytesUsedTable.ClusterAddresses.Last() + 1, clusterCount),
                 sizeof(long),
-                 (address) => new VerifyTimesCluster(address));
+                 (address) => new VerifyTimesCluster(address, _geometry.BytesPerCluster, _volumeID));
             _verifyTimeTable.Load(_clusterIO);
 
             int l = _verifyTimeTable.ClusterAddresses.Last() + 1;
             int[] cl = getClusterChain(l).ToArray();
 
-            // Directory Table
+            // Initialize the Directory Table
             _directoryTable = new MutableObjectClusterTable<Directory>(
                 getClusterChain(_verifyTimeTable.ClusterAddresses.Last() + 1),
                 Directory.StorageLength,
                 (address) => Directory.CreateArrayCluster(address));
             _directoryTable.Load(_clusterIO);
 
-            // File Table
+            // Initialize the File Table
             _fileTable = new MutableObjectClusterTable<File>(
                 getClusterChain(_directoryTable.ClusterAddresses.First() + 1),
                 File.StorageLength,
                 (address) => File.CreateArrayCluster(address));
             _fileTable.Load(_clusterIO);
 
-            // Access Rules Table
+            // Initialize the Access Rules Table
             _accessRules = new ClusterTable<SrfsAccessRule>(
                 getClusterChain(_fileTable.ClusterAddresses.First() + 1),
                 SrfsAccessRule.StorageLength + sizeof(bool),
                 (address) => SrfsAccessRule.CreateArrayCluster(address));
             _accessRules.Load(_clusterIO);
 
-            // Audit Rules Table
+            // Initialize the Audit Rules Table
             _auditRules = new ClusterTable<SrfsAuditRule>(
                 getClusterChain(_accessRules.ClusterAddresses.First() + 1),
                 SrfsAuditRule.StorageLength + sizeof(bool),
                 (address) => SrfsAuditRule.CreateArrayCluster(address));
             _auditRules.Load(_clusterIO);
 
-            // Create the Indices
+            // Create the Indexes
             for (int i = 0; i < _directoryTable.Count; i++) {
                 Directory d = _directoryTable[i];
                 if (d != null) {
@@ -300,8 +179,9 @@ namespace SRFS.Model {
                 if (r != null) _auditRulesIndex[r.ID].Add(i);
             }
 
+            // Update the next entry ID
             _nextEntryID = Math.Max(
-                _directoryIndex.Keys.Max(), 
+                _directoryIndex.Keys.Max(),
                 _fileIndex.Count == 0 ? -1 : _fileIndex.Keys.Max()) + 1;
         }
 
@@ -309,185 +189,32 @@ namespace SRFS.Model {
             if (!_isDisposed) {
                 if (disposing) {
                     Flush();
+                    if (_disposeDeviceIO) _deviceIO.Dispose();
                 }
                 _isDisposed = true;
             }
         }
 
-        private IEnumerable<int> getClusterChain(int startingClusterNumber) {
-            while (startingClusterNumber != Constants.NoAddress) {
-                yield return startingClusterNumber;
-                startingClusterNumber = GetNextClusterAddress(startingClusterNumber);
-            }
-        }
-
         public void Dispose() => Dispose(true);
 
-        public IDictionary<string, Directory> GetContainedDirectories(Directory dir) {
-            return new ReadOnlyDictionary<string, Directory>(_containedDirectoriesIndex[dir.ID]);
-        }
+        #endregion
+        #region Properties
 
-        public IDictionary<string, File> GetContainedFiles(Directory dir) {
-            return new ReadOnlyDictionary<string, File>(_containedFilesIndex[dir.ID]);
-        }
-
-        public IEnumerable<FileSystemAccessRule> GetAccessRules(FileSystemObject entry) {
-            return (from i in _accessRulesIndex[entry.ID] select _accessRules[i].Rule);
-        }
-
-        public IEnumerable<FileSystemAuditRule> GetAuditRules(FileSystemObject entry) {
-            return (from i in _auditRulesIndex[entry.ID] select _auditRules[i].Rule);
-        }
-
-        public void MoveDirectory(Directory dir, Directory newDirectory, string newName) {
-            if (_containedDirectoriesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
-            if (_containedFilesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
-            _containedDirectoriesIndex[dir.ParentID].Remove(dir.Name);
-            dir.ParentID = newDirectory.ID;
-            dir.Name = newName;
-            _containedDirectoriesIndex[newDirectory.ID].Add(dir.Name, dir);
-        }
-
-        public void MoveFile(File file, Directory newDirectory, string newName) {
-            if (_containedDirectoriesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
-            if (_containedFilesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
-            // We need to lock and check if the names already exist.  All access to these indices should be threadsafe.  Also,
-            // think about passing back copies of internal structures like lists and dictionaries so that we don't have pointers
-            // to stuff we try and lock later.
-            _containedFilesIndex[file.ParentID].Remove(file.Name);
-            file.ParentID = newDirectory.ID;
-            file.Name = newName;
-            _containedFilesIndex[newDirectory.ID].Add(file.Name, file);
-        }
-
-        public Directory CreateDirectory(Directory parent, string name) {
-            if (parent == null && _directoryIndex.Count != 0) throw new ArgumentException();
-
-            if (parent != null) {
-                if (GetContainedDirectories(parent).ContainsKey(name)) throw new ArgumentException();
-                if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
+        public long TotalNumberOfBytes {
+            get {
+                return (long)(_geometry.BytesPerCluster - FileDataCluster.FileBaseClusterHeaderLength) *
+                    _geometry.DataClustersPerTrack * _geometry.TrackCount;
             }
-
-            Directory dir = new Directory(_nextEntryID++, name);
-            dir.Attributes = System.IO.FileAttributes.Directory;
-            if (parent != null) _containedDirectoriesIndex[parent.ID].Add(name, dir);
-            int index = getFreeDirectoryIndex();
-            _directoryTable[index] = dir;
-            _directoryIndex.Add(dir.ID, index);
-
-            _containedDirectoriesIndex.Add(dir.ID, new SortedList<string, Directory>(StringComparer.OrdinalIgnoreCase));
-            _containedFilesIndex.Add(dir.ID, new SortedList<string, File>(StringComparer.OrdinalIgnoreCase));
-            _accessRulesIndex.Add(dir.ID, new List<int>());
-            _auditRulesIndex.Add(dir.ID, new List<int>());
-
-            dir.ParentID = parent?.ID ?? Constants.NoID;
-            return dir;
         }
 
-        public File CreateFile(Directory parent, string name) {
-            if (parent == null) throw new ArgumentException();
+        public Directory RootDirectory => _directoryTable[0];
+        public int BlockSize => _deviceIO.BlockSizeBytes;
 
-            if (GetContainedDirectories(parent).ContainsKey(name)) throw new ArgumentException();
-            if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
+        public IEnumerable<ClusterState> ClusterStates => _clusterStateTable;
 
-            File file = new File(_nextEntryID++, name);
-            file.Attributes = System.IO.FileAttributes.Normal;
+        public IClusterIO ClusterIO => _clusterIO;
 
-            _containedFilesIndex[parent.ID].Add(name, file);
-            int index = getFreeFileIndex();
-            _fileTable[index] = file;
-            _fileIndex.Add(file.ID, index);
-
-            _accessRulesIndex.Add(file.ID, new List<int>());
-            _auditRulesIndex.Add(file.ID, new List<int>());
-
-            file.ParentID = parent.ID;
-            return file;
-        }
-
-        public void RemoveDirectory(Directory dir) {
-            if (_containedDirectoriesIndex[dir.ID].Count > 0) throw new InvalidOperationException();
-            if (_containedFilesIndex[dir.ID].Count > 0) throw new InvalidOperationException();
-
-            _containedDirectoriesIndex[dir.ParentID].Remove(dir.Name);
-            _containedDirectoriesIndex.Remove(dir.ID);
-            _containedFilesIndex.Remove(dir.ID);
-            int index = _directoryIndex[dir.ID];
-            _directoryIndex.Remove(dir.ID);
-            _directoryTable[index] = null;
-
-            foreach (var r in _accessRulesIndex[dir.ID]) _accessRules[r] = null;
-            _accessRulesIndex.Remove(dir.ID);
-
-            foreach (var r in _auditRulesIndex[dir.ID]) _auditRules[r] = null;
-            _auditRulesIndex.Remove(dir.ID);
-
-            if (index < _nextDirectoryIndex) _nextDirectoryIndex = index;
-        }
-
-        public void RemoveFile(File file) {
-            lock (_lock) {
-                List<int> clusters = getClusterChain(file.FirstCluster).ToList();
-                foreach (var cluster in clusters) DeallocateCluster(cluster);
-            }
-
-            _containedFilesIndex[file.ParentID].Remove(file.Name);
-            int index = _fileIndex[file.ID];
-            _fileIndex.Remove(file.ID);
-            _fileTable[index] = null;
-
-            foreach (var r in _accessRulesIndex[file.ID]) _accessRules[r] = null;
-            _accessRulesIndex.Remove(file.ID);
-
-            foreach (var r in _auditRulesIndex[file.ID]) _auditRules[r] = null;
-            _auditRulesIndex.Remove(file.ID);
-
-            if (index < _nextFileIndex) _nextFileIndex = index;
-        }
-
-        public void RemoveAccessRules(FileSystemObject obj) {
-            int lowestIndex = int.MaxValue;
-            foreach (var index in _accessRulesIndex[obj.ID]) {
-                _accessRules[index] = null;
-                if (index < lowestIndex) lowestIndex = index;
-            }
-            _accessRulesIndex[obj.ID].Clear();
-            if (lowestIndex != int.MaxValue) _nextAccessRuleIndex = Math.Min(_nextAccessRuleIndex, lowestIndex);
-        }
-
-        public void RemoveAuditRules(FileSystemObject obj) {
-            int lowestIndex = int.MaxValue;
-            foreach (var index in _auditRulesIndex[obj.ID]) {
-                _auditRules[index] = null;
-                if (index < lowestIndex) lowestIndex = index;
-            }
-            _auditRulesIndex[obj.ID].Clear();
-            if (lowestIndex != int.MaxValue) _nextAuditRuleIndex = Math.Min(_nextAuditRuleIndex, lowestIndex);
-        }
-
-        public void AddAccessRule(Directory dir, FileSystemAccessRule rule) {
-            int index = getFreeAccessRuleIndex();
-            _accessRules[index] = new SrfsAccessRule(dir, rule);
-            _accessRulesIndex[dir.ID].Add(index);
-        }
-
-        public void AddAccessRule(File file, FileSystemAccessRule rule) {
-            int index = getFreeAccessRuleIndex();
-            _accessRules[index] = new SrfsAccessRule(file, rule);
-            _accessRulesIndex[file.ID].Add(index);
-        }
-
-        public void AddAuditRule(Directory dir, FileSystemAuditRule rule) {
-            int index = getFreeAuditRuleIndex();
-            _auditRules[index] = new SrfsAuditRule(dir, rule);
-            _auditRulesIndex[dir.ID].Add(index);
-        }
-
-        public void AddAuditRule(File file, FileSystemAuditRule rule) {
-            int index = getFreeAuditRuleIndex();
-            _auditRules[index] = new SrfsAuditRule(file, rule);
-            _auditRulesIndex[file.ID].Add(index);
-        }
+        public bool ReadOnly => _readOnly;
 
         #endregion
         #region Methods
@@ -497,6 +224,8 @@ namespace SRFS.Model {
         }
 
         public void SetClusterState(int absoluteClusterNumber, ClusterState value) {
+            if (_readOnly) throw new NotSupportedException();
+
             lock (_lock) _clusterStateTable[absoluteClusterNumber] = value;
         }
 
@@ -505,6 +234,8 @@ namespace SRFS.Model {
         }
 
         public void SetBytesUsed(int absoluteClusterNumber, int value) {
+            if (_readOnly) throw new NotSupportedException();
+
             lock (_lock) _bytesUsedTable[absoluteClusterNumber] = value;
         }
 
@@ -513,6 +244,8 @@ namespace SRFS.Model {
         }
 
         public void SetNextClusterAddress(int absoluteClusterNumber, int value) {
+            if (_readOnly) throw new NotSupportedException();
+
             lock (_lock) _nextClusterAddressTable[absoluteClusterNumber] = value;
         }
 
@@ -521,15 +254,19 @@ namespace SRFS.Model {
         }
 
         public void SetVerifyTime(int absoluteClusterNumber, DateTime value) {
+            if (_readOnly) throw new NotSupportedException();
+
             lock (_lock) _verifyTimeTable[absoluteClusterNumber] = value;
         }
 
         public int AllocateCluster() {
+            if (_readOnly) throw new NotSupportedException();
+
             lock (_lock) {
-                for (int i = _freeClusterSearchStart; i < Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount; i++) {
-                    if (_clusterStateTable[i] == ClusterState.Unused) {
+                for (int i = _freeClusterSearchStart; i < _geometry.DataClustersPerTrack * _geometry.TrackCount; i++) {
+                    if (!_clusterStateTable[i].IsUsed()) {
                         _freeClusterSearchStart = i + 1;
-                        SetClusterState(i, ClusterState.Used);
+                        SetClusterState(i, ClusterState.Used | (_clusterStateTable[i].IsModified() ? ClusterState.Modified : 0));
                         SetNextClusterAddress(i, Constants.NoAddress);
                         SetBytesUsed(i, 0);
                         return i;
@@ -540,10 +277,14 @@ namespace SRFS.Model {
         }
 
         public IEnumerable<int> AllocateClusters(int n) {
+            if (_readOnly) throw new NotSupportedException();
+
             for (int i = 0; i < n; i++) yield return AllocateCluster();
         }
 
         public void DeallocateCluster(int absoluteClusterNumber) {
+            if (_readOnly) throw new NotSupportedException();
+
             lock (_lock) {
                 SetClusterState(absoluteClusterNumber, GetClusterState(absoluteClusterNumber) & ~ClusterState.Used);
                 SetNextClusterAddress(absoluteClusterNumber, Constants.NoAddress);
@@ -583,6 +324,7 @@ namespace SRFS.Model {
         }
 
         public void Flush() {
+            if (_readOnly) return;
 
             // These must be flushed first, since they can modify the nextCluster and bytesUsed tables below.
             _directoryTable.Flush(_clusterIO);
@@ -596,24 +338,352 @@ namespace SRFS.Model {
             _verifyTimeTable.Flush(_clusterIO);
         }
 
-        #endregion
-        #region Properties
+        public IDictionary<string, Directory> GetContainedDirectories(Directory dir) {
+            return new ReadOnlyDictionary<string, Directory>(_containedDirectoriesIndex[dir.ID]);
+        }
 
-        public long TotalNumberOfBytes {
-            get {
-                return (long)(Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength) * 
-                    Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount;
+        public IDictionary<string, File> GetContainedFiles(Directory dir) {
+            return new ReadOnlyDictionary<string, File>(_containedFilesIndex[dir.ID]);
+        }
+
+        public IEnumerable<FileSystemAccessRule> GetAccessRules(FileSystemObject entry) {
+            return (from i in _accessRulesIndex[entry.ID] select _accessRules[i].Rule);
+        }
+
+        public IEnumerable<FileSystemAuditRule> GetAuditRules(FileSystemObject entry) {
+            return (from i in _auditRulesIndex[entry.ID] select _auditRules[i].Rule);
+        }
+
+        public void MoveDirectory(Directory dir, Directory newDirectory, string newName) {
+            if (_readOnly) throw new NotSupportedException();
+
+            if (_containedDirectoriesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            if (_containedFilesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            _containedDirectoriesIndex[dir.ParentID].Remove(dir.Name);
+            dir.ParentID = newDirectory.ID;
+            dir.Name = newName;
+            _containedDirectoriesIndex[newDirectory.ID].Add(dir.Name, dir);
+        }
+
+        public void MoveFile(File file, Directory newDirectory, string newName) {
+            if (_readOnly) throw new NotSupportedException();
+
+            if (_containedDirectoriesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            if (_containedFilesIndex[newDirectory.ID].ContainsKey(newName)) throw new System.IO.IOException();
+            // We need to lock and check if the names already exist.  All access to these indices should be threadsafe.  Also,
+            // think about passing back copies of internal structures like lists and dictionaries so that we don't have pointers
+            // to stuff we try and lock later.
+            _containedFilesIndex[file.ParentID].Remove(file.Name);
+            file.ParentID = newDirectory.ID;
+            file.Name = newName;
+            _containedFilesIndex[newDirectory.ID].Add(file.Name, file);
+        }
+
+        public Directory CreateDirectory(Directory parent, string name) {
+            if (_readOnly) throw new NotSupportedException();
+
+            if (parent == null && _directoryIndex.Count != 0) throw new ArgumentException();
+
+            if (parent != null) {
+                if (GetContainedDirectories(parent).ContainsKey(name)) throw new ArgumentException();
+                if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
+            }
+
+            Directory dir = new Directory(_nextEntryID++, name);
+            dir.Attributes = System.IO.FileAttributes.Directory;
+            if (parent != null) _containedDirectoriesIndex[parent.ID].Add(name, dir);
+            int index = getNextFreeDirectoryIndex();
+            _directoryTable[index] = dir;
+            _directoryIndex.Add(dir.ID, index);
+
+            _containedDirectoriesIndex.Add(dir.ID, new SortedList<string, Directory>(StringComparer.OrdinalIgnoreCase));
+            _containedFilesIndex.Add(dir.ID, new SortedList<string, File>(StringComparer.OrdinalIgnoreCase));
+            _accessRulesIndex.Add(dir.ID, new List<int>());
+            _auditRulesIndex.Add(dir.ID, new List<int>());
+
+            dir.ParentID = parent?.ID ?? Constants.NoID;
+            return dir;
+        }
+
+        public File CreateFile(Directory parent, string name) {
+            if (_readOnly) throw new NotSupportedException();
+
+            if (parent == null) throw new ArgumentException();
+
+            if (GetContainedDirectories(parent).ContainsKey(name)) throw new ArgumentException();
+            if (GetContainedFiles(parent).ContainsKey(name)) throw new ArgumentException();
+
+            File file = new File(_nextEntryID++, name);
+            file.Attributes = System.IO.FileAttributes.Normal;
+
+            _containedFilesIndex[parent.ID].Add(name, file);
+            int index = getNextFreeFileIndex();
+            _fileTable[index] = file;
+            _fileIndex.Add(file.ID, index);
+
+            _accessRulesIndex.Add(file.ID, new List<int>());
+            _auditRulesIndex.Add(file.ID, new List<int>());
+
+            file.ParentID = parent.ID;
+            return file;
+        }
+
+        public void RemoveDirectory(Directory dir) {
+            if (_readOnly) throw new NotSupportedException();
+
+            if (_containedDirectoriesIndex[dir.ID].Count > 0) throw new InvalidOperationException();
+            if (_containedFilesIndex[dir.ID].Count > 0) throw new InvalidOperationException();
+
+            _containedDirectoriesIndex[dir.ParentID].Remove(dir.Name);
+            _containedDirectoriesIndex.Remove(dir.ID);
+            _containedFilesIndex.Remove(dir.ID);
+            int index = _directoryIndex[dir.ID];
+            _directoryIndex.Remove(dir.ID);
+            _directoryTable[index] = null;
+
+            foreach (var r in _accessRulesIndex[dir.ID]) _accessRules[r] = null;
+            _accessRulesIndex.Remove(dir.ID);
+
+            foreach (var r in _auditRulesIndex[dir.ID]) _auditRules[r] = null;
+            _auditRulesIndex.Remove(dir.ID);
+
+            if (index < _nextDirectoryIndex) _nextDirectoryIndex = index;
+        }
+
+        public void RemoveFile(File file) {
+            if (_readOnly) throw new NotSupportedException();
+
+            lock (_lock) {
+                List<int> clusters = getClusterChain(file.FirstCluster).ToList();
+                foreach (var cluster in clusters) DeallocateCluster(cluster);
+            }
+
+            _containedFilesIndex[file.ParentID].Remove(file.Name);
+            int index = _fileIndex[file.ID];
+            _fileIndex.Remove(file.ID);
+            _fileTable[index] = null;
+
+            foreach (var r in _accessRulesIndex[file.ID]) _accessRules[r] = null;
+            _accessRulesIndex.Remove(file.ID);
+
+            foreach (var r in _auditRulesIndex[file.ID]) _auditRules[r] = null;
+            _auditRulesIndex.Remove(file.ID);
+
+            if (index < _nextFileIndex) _nextFileIndex = index;
+        }
+
+        public void RemoveAccessRules(FileSystemObject obj) {
+            if (_readOnly) throw new NotSupportedException();
+
+            int lowestIndex = int.MaxValue;
+            foreach (var index in _accessRulesIndex[obj.ID]) {
+                _accessRules[index] = null;
+                if (index < lowestIndex) lowestIndex = index;
+            }
+            _accessRulesIndex[obj.ID].Clear();
+            if (lowestIndex != int.MaxValue) _nextAccessRuleIndex = Math.Min(_nextAccessRuleIndex, lowestIndex);
+        }
+
+        public void RemoveAuditRules(FileSystemObject obj) {
+            if (_readOnly) throw new NotSupportedException();
+
+            int lowestIndex = int.MaxValue;
+            foreach (var index in _auditRulesIndex[obj.ID]) {
+                _auditRules[index] = null;
+                if (index < lowestIndex) lowestIndex = index;
+            }
+            _auditRulesIndex[obj.ID].Clear();
+            if (lowestIndex != int.MaxValue) _nextAuditRuleIndex = Math.Min(_nextAuditRuleIndex, lowestIndex);
+        }
+
+        public void AddAccessRule(Directory dir, FileSystemAccessRule rule) {
+            if (_readOnly) throw new NotSupportedException();
+
+            int index = getNextFreeAccessRuleIndex();
+            _accessRules[index] = new SrfsAccessRule(dir, rule);
+            _accessRulesIndex[dir.ID].Add(index);
+        }
+
+        public void AddAccessRule(File file, FileSystemAccessRule rule) {
+            if (_readOnly) throw new NotSupportedException();
+
+            int index = getNextFreeAccessRuleIndex();
+            _accessRules[index] = new SrfsAccessRule(file, rule);
+            _accessRulesIndex[file.ID].Add(index);
+        }
+
+        public void AddAuditRule(Directory dir, FileSystemAuditRule rule) {
+            if (_readOnly) throw new NotSupportedException();
+
+            int index = getNextFreeAuditRuleIndex();
+            _auditRules[index] = new SrfsAuditRule(dir, rule);
+            _auditRulesIndex[dir.ID].Add(index);
+        }
+
+        public void AddAuditRule(File file, FileSystemAuditRule rule) {
+            if (_readOnly) throw new NotSupportedException();
+
+            int index = getNextFreeAuditRuleIndex();
+            _auditRules[index] = new SrfsAuditRule(file, rule);
+            _auditRulesIndex[file.ID].Add(index);
+        }
+
+        #endregion
+
+        // Private
+        #region Methods
+
+        private static void Create(IBlockIO deviceIO, string volumeName, Geometry geometry, Guid volumeID, PrivateKey signatureKey) {
+
+            // Write the Partition Cluster
+            FileSystemHeaderCluster fileSystemHeaderCluster = new FileSystemHeaderCluster(deviceIO.BlockSizeBytes, volumeID);
+            fileSystemHeaderCluster.BytesPerDataCluster = geometry.BytesPerCluster;
+            fileSystemHeaderCluster.ClustersPerTrack = geometry.ClustersPerTrack;
+            fileSystemHeaderCluster.DataClustersPerTrack = geometry.DataClustersPerTrack;
+            fileSystemHeaderCluster.TrackCount = geometry.TrackCount;
+            fileSystemHeaderCluster.VolumeName = volumeName;
+            byte[] data = new byte[fileSystemHeaderCluster.ClusterSizeBytes];
+            fileSystemHeaderCluster.Save(data, 0, signatureKey);
+            deviceIO.Write(0, data, 0, data.Length);
+
+            // Cluster State Table
+            int entryCount = geometry.ClustersPerTrack * geometry.TrackCount;
+            int clusterCount = (entryCount + ClusterStatesCluster.CalculateElementsPerCluster(geometry.BytesPerCluster) - 1) / 
+                ClusterStatesCluster.CalculateElementsPerCluster(geometry.BytesPerCluster);
+            ClusterTable<ClusterState> clusterStateTable = new ClusterTable<ClusterState>(
+                Enumerable.Range(0, clusterCount),
+                sizeof(ClusterState),
+                (address) => new ClusterStatesCluster(address, geometry.BytesPerCluster, volumeID));
+
+            // Next Cluster Address Table
+            entryCount = geometry.DataClustersPerTrack * geometry.TrackCount;
+            clusterCount = (entryCount + Int32ArrayCluster.CalculateElementsPerCluster(geometry.BytesPerCluster) - 1) / 
+                Int32ArrayCluster.CalculateElementsPerCluster(geometry.BytesPerCluster);
+            ClusterTable<int> nextClusterAddressTable = new ClusterTable<int>(
+                Enumerable.Range(clusterStateTable.ClusterAddresses.Last() + 1, clusterCount),
+                sizeof(int),
+                (address) => new Int32ArrayCluster(address, geometry.BytesPerCluster, volumeID, ClusterType.NextClusterAddressTable ));
+
+            // Bytes Used Table
+            ClusterTable<int> bytesUsedTable = new ClusterTable<int>(
+                Enumerable.Range(nextClusterAddressTable.ClusterAddresses.Last() + 1, clusterCount),
+                sizeof(int),
+                 (address) => new Int32ArrayCluster(address, geometry.BytesPerCluster, volumeID, ClusterType.BytesUsedTable ));
+
+            entryCount = geometry.ClustersPerTrack * geometry.TrackCount;
+            clusterCount = (entryCount + VerifyTimesCluster.CalculateElementsPerCluster(geometry.BytesPerCluster) - 1) / 
+                VerifyTimesCluster.CalculateElementsPerCluster(geometry.BytesPerCluster);
+
+            // Verify Time Table
+            ClusterTable<DateTime> verifyTimeTable = new ClusterTable<DateTime>(
+                Enumerable.Range(bytesUsedTable.ClusterAddresses.Last() + 1, clusterCount),
+                sizeof(long),
+                 (address) => new VerifyTimesCluster(address, geometry.BytesPerCluster, volumeID));
+
+            // Directory Table
+            MutableObjectClusterTable<Directory> directoryTable = new MutableObjectClusterTable<Directory>(
+                new int[] { verifyTimeTable.ClusterAddresses.Last() + 1 },
+                Directory.StorageLength,
+                (address) => Directory.CreateArrayCluster(address));
+
+            // File Table
+            MutableObjectClusterTable<File> fileTable = new MutableObjectClusterTable<File>(
+                new int[] { directoryTable.ClusterAddresses.Last() + 1 },
+                File.StorageLength,
+                (address) => File.CreateArrayCluster(address));
+
+            // Access Rules Table
+            ClusterTable<SrfsAccessRule> accessRules = new ClusterTable<SrfsAccessRule>(
+                new int[] { fileTable.ClusterAddresses.Last() + 1 },
+                SrfsAccessRule.StorageLength + sizeof(bool),
+                (address) => SrfsAccessRule.CreateArrayCluster(address));
+
+            // Audit Rules Table
+            ClusterTable<SrfsAuditRule> auditRules = new ClusterTable<SrfsAuditRule>(
+                new int[] { accessRules.ClusterAddresses.Last() + 1 },
+                SrfsAuditRule.StorageLength + sizeof(bool),
+                (address) => SrfsAuditRule.CreateArrayCluster(address));
+
+            // Initialize the tables
+            int nDataClusters = geometry.DataClustersPerTrack * geometry.TrackCount;
+            int nParityClusters = geometry.ParityClustersPerTrack * geometry.TrackCount;
+
+            for (int i = 0; i < nDataClusters; i++)
+                clusterStateTable[i] = ClusterState.Data | ClusterState.Unwritten;
+            for (int i = nDataClusters; i < nDataClusters + nParityClusters; i++)
+                clusterStateTable[i] = ClusterState.Parity | ClusterState.Unwritten;
+            for (int i = nDataClusters + nParityClusters; i < clusterStateTable.Count; i++)
+                clusterStateTable[i] = ClusterState.Null;
+
+            for (int i = 0; i < clusterStateTable.Count; i++) clusterStateTable[i] = ClusterState.None;
+            for (int i = 0; i < nextClusterAddressTable.Count; i++) nextClusterAddressTable[i] = Constants.NoAddress;
+            for (int i = 0; i < bytesUsedTable.Count; i++) bytesUsedTable[i] = 0;
+            for (int i = 0; i < verifyTimeTable.Count; i++) verifyTimeTable[i] = DateTime.MinValue;
+            for (int i = 0; i < directoryTable.Count; i++) directoryTable[i] = null;
+            for (int i = 0; i < fileTable.Count; i++) fileTable[i] = null;
+            for (int i = 0; i < accessRules.Count; i++) accessRules[i] = null;
+            for (int i = 0; i < auditRules.Count; i++) auditRules[i] = null;
+
+            // Update the cluster state and next cluster address tables
+            foreach (var t in new IEnumerable<int>[] {
+                clusterStateTable.ClusterAddresses,
+                nextClusterAddressTable.ClusterAddresses,
+                bytesUsedTable.ClusterAddresses,
+                verifyTimeTable.ClusterAddresses,
+                directoryTable.ClusterAddresses,
+                fileTable.ClusterAddresses,
+                accessRules.ClusterAddresses,
+                auditRules.ClusterAddresses
+            }) {
+                foreach (var n in t) {
+                    clusterStateTable[n] = ClusterState.System | ClusterState.Used;
+                    nextClusterAddressTable[n] = n + 1;
+                }
+                nextClusterAddressTable[t.Last()] = Constants.NoAddress;
+            }
+
+            // Create the root directory
+            Directory dir = new Directory(0, "");
+            dir.Attributes = System.IO.FileAttributes.Directory;
+            dir.ParentID = Constants.NoID;
+            dir.Owner = WindowsIdentity.GetCurrent().User;
+            dir.Group = WindowsIdentity.GetCurrent().User;
+            directoryTable[0] = dir;
+            accessRules[0] = new SrfsAccessRule(dir, new FileSystemAccessRule(WindowsIdentity.GetCurrent().User, FileSystemRights.FullControl,
+                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None,
+                AccessControlType.Allow));
+
+            SimpleClusterIO clusterIO = new SimpleClusterIO(deviceIO, fileSystemHeaderCluster.BytesPerDataCluster);
+            clusterStateTable.Flush(clusterIO);
+            nextClusterAddressTable.Flush(clusterIO);
+            bytesUsedTable.Flush(clusterIO);
+            verifyTimeTable.Flush(clusterIO);
+            directoryTable.Flush(clusterIO);
+            fileTable.Flush(clusterIO);
+            accessRules.Flush(clusterIO);
+            auditRules.Flush(clusterIO);
+        }
+
+        private IEnumerable<int> getClusterChain(int startingClusterNumber) {
+            while (startingClusterNumber != Constants.NoAddress) {
+                yield return startingClusterNumber;
+                startingClusterNumber = GetNextClusterAddress(startingClusterNumber);
             }
         }
 
-        public Directory RootDirectory => _directoryTable[0];
+        #endregion
+
+        #region Properties
+
         public Directory GetDirectory(int id) => _directoryTable[id];
+
+        public IEnumerable<File> Files => _fileTable.Where(f => f != null);
 
         public long TotalNumberOfFreeBytes {
             get {
                 lock (_lock) {
                     long count = 0;
-                    for (int i = 0; i < Configuration.Geometry.DataClustersPerTrack * Configuration.Geometry.TrackCount; i++) {
+                    for (int i = 0; i < _geometry.DataClustersPerTrack * _geometry.TrackCount; i++) {
                         if ((_clusterStateTable[i] & ClusterState.Used) == 0) count++;
                     }
 
@@ -621,31 +691,23 @@ namespace SRFS.Model {
                     //                     where (c & ClusterState.Used) == 0 && (c & ClusterState.Parity) == 0 &&
                     //                     (c & ClusterState.Null) == 0
                     //                     select c).Count();
-                    return count * (Configuration.Geometry.BytesPerCluster - FileDataCluster.HeaderLength);
+                    return count * (_geometry.BytesPerCluster - FileDataCluster.FileBaseClusterHeaderLength);
                 }
             }
         }
 
         #endregion
-        #region Private Fields
+        #region Private Methods
 
-        private int getFreeDirectoryIndex() {
-            return getFreeIndex(ref _nextDirectoryIndex, _directoryTable);
-        }
+        private int getNextFreeDirectoryIndex() => getNextFreeIndex(ref _nextDirectoryIndex, _directoryTable);
 
-        private int getFreeFileIndex() {
-            return getFreeIndex(ref _nextFileIndex, _fileTable);
-        }
+        private int getNextFreeFileIndex() => getNextFreeIndex(ref _nextFileIndex, _fileTable);
 
-        private int getFreeAccessRuleIndex() {
-            return getFreeIndex(ref _nextAccessRuleIndex, _accessRules);
-        }
+        private int getNextFreeAccessRuleIndex() => getNextFreeIndex(ref _nextAccessRuleIndex, _accessRules);
 
-        private int getFreeAuditRuleIndex() {
-            return getFreeIndex(ref _nextAuditRuleIndex, _auditRules);
-        }
+        private int getNextFreeAuditRuleIndex() => getNextFreeIndex(ref _nextAuditRuleIndex, _auditRules);
 
-        private int getFreeIndex<T>(ref int nextIndex, IClusterTable<T> table) {
+        private int getNextFreeIndex<T>(ref int nextIndex, IClusterTable<T> table) {
             int i = nextIndex;
             while (true) {
                 if (i >= table.Count) {
@@ -661,14 +723,30 @@ namespace SRFS.Model {
             }
         }
 
+        #endregion
+        #region Private Fields
+
+        // Cryptographic settings
+        private Dictionary<Signature, CngKey> _keys;
+        private PrivateKey _decryptionKey;
+
+        // Geometry
+        private Geometry _geometry;
+
+        // Metadata
+        private Guid _volumeID;
+        private string _volumeName;
+
+        // Options
+        private Options _options;
+
+        // Indices
         private int _nextEntryID;
         private int _freeClusterSearchStart;
         private int _nextDirectoryIndex;
         private int _nextFileIndex;
         private int _nextAccessRuleIndex;
         private int _nextAuditRuleIndex;
-
-        public IEnumerable<ClusterState> ClusterStates => _clusterStateTable;
 
         private ClusterTable<ClusterState> _clusterStateTable;
         private ClusterTable<int> _nextClusterAddressTable;
@@ -690,8 +768,7 @@ namespace SRFS.Model {
         private ClusterTable<SrfsAuditRule> _auditRules;
         private Dictionary<int, List<int>> _auditRulesIndex;
 
-        public IClusterIO ClusterIO => _clusterIO;
-
+        private bool _disposeDeviceIO = false;
         private IBlockIO _deviceIO;
         private FileSystemClusterIO _clusterIO;
 
@@ -699,37 +776,8 @@ namespace SRFS.Model {
 
         private bool _isDisposed = false;
 
+        private bool _readOnly = true;
+
         #endregion
-
-        private class FileSystemClusterIO : SimpleClusterIO {
-
-            public FileSystemClusterIO(FileSystem fs, IBlockIO io) : base(io, FileSystemHeaderCluster.CalculateClusterSize(io.BlockSizeBytes)) {
-                _fileSystem = fs;
-            }
-
-            public override void Load(Cluster c) {
-                if (c is FileBaseCluster fb) {
-                    Console.WriteLine($"Loading FileBaseCluster {fb.Address}");
-                } else if (c is ArrayCluster a) {
-                    Console.WriteLine($"Loading ArrayCluster {a.Address}");
-                }
-                base.Load(c);
-            }
-            public override void Save(Cluster c) {
-                base.Save(c);
-                if (c is FileBaseCluster fb) {
-                    Console.WriteLine($"Saved FileBaseCluster {fb.Address}");
-                    _fileSystem.SetBytesUsed(fb.Address, fb.BytesUsed);
-                    _fileSystem.SetNextClusterAddress(fb.Address, fb.NextClusterAddress);
-                    _fileSystem.SetClusterState(fb.Address, _fileSystem.GetClusterState(fb.Address) | ClusterState.Modified);
-                } else if (c is ArrayCluster a) {
-                    Console.WriteLine($"Saved ArrayCluster {a.Address}");
-                    _fileSystem.SetNextClusterAddress(a.Address, a.NextClusterAddress);
-                    _fileSystem.SetClusterState(a.Address, _fileSystem.GetClusterState(a.Address) | ClusterState.Modified);
-                }
-            }
-
-            private FileSystem _fileSystem;
-        }
     }
 }
