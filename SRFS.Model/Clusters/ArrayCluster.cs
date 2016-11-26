@@ -1,11 +1,20 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 
 namespace SRFS.Model.Clusters {
 
+    /// <summary>
+    /// The base class for data clusters that just contain an array of data.
+    /// 
+    /// The header layout is:
+    /// 
+    /// Data Cluster Header (223 bytes)
+    /// Next Cluster Address (4 bytes)
+    /// 
+    /// Total Length: 227 bytes.
+    /// </summary>
     public abstract class ArrayCluster : DataCluster {
 
         // Public
@@ -28,18 +37,11 @@ namespace SRFS.Model.Clusters {
         }
 
         #endregion
-        #region Methods
-
-        protected static int CalculateElementCount(int elementSize, int bytesPerCluster) {
-            return (bytesPerCluster - ArrayCluster_HeaderLength) / elementSize;
-        }
-
-        #endregion
 
         // Protected
         #region Constructors
 
-        protected ArrayCluster(int address, int clusterSize, Guid volumeID, ClusterType clusterType) : 
+        protected ArrayCluster(int address, int clusterSize, Guid volumeID, ClusterType clusterType) :
             base(address, clusterSize, volumeID, clusterType) {
             if (address == Constants.NoAddress) throw new ArgumentOutOfRangeException();
             _nextClusterAddress = Constants.NoAddress;
@@ -47,6 +49,10 @@ namespace SRFS.Model.Clusters {
 
         #endregion
         #region Methods
+
+        public static int CalculateElementCount(int elementSize, int bytesPerCluster) {
+            return (bytesPerCluster - ArrayCluster_HeaderLength) / elementSize;
+        }
 
         protected override void Read(BinaryReader reader) {
             base.Read(reader);
@@ -70,6 +76,18 @@ namespace SRFS.Model.Clusters {
         #endregion
     }
 
+    /// <summary>
+    /// The generic base class for data clusters that just contain an array of data.  This class adds type-specific code to the non-generic
+    /// ArrayCluster class.
+    /// 
+    /// The header layout is:
+    /// 
+    /// [Cluster Header (219 bytes)]
+    /// [Data Cluster Header (4 bytes)]
+    /// [Array Cluster Header (4 bytes)]
+    /// 
+    /// Total Length: 227 bytes.
+    /// </summary>
     public abstract class ArrayCluster<T> : ArrayCluster, IEnumerable<T> {
 
         // Public
@@ -92,7 +110,7 @@ namespace SRFS.Model.Clusters {
         // Protected
         #region Constructors
 
-        protected ArrayCluster(int address, int bytesPerCluster, Guid volumeID, ClusterType clusterType, int elementSize) : 
+        protected ArrayCluster(int address, int bytesPerCluster, Guid volumeID, ClusterType clusterType, int elementSize) :
             base(address, bytesPerCluster, volumeID, clusterType) {
             _elementSize = elementSize;
             _elements = new T[CalculateElementCount(elementSize, bytesPerCluster)];

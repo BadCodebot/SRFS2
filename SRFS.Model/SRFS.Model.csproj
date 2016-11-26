@@ -82,6 +82,10 @@
     <Compile Include="Data\KeyThumbprint.cs" />
     <Compile Include="Data\PublicKey.cs" />
     <Compile Include="Data\Signature.cs" />
+    <Compile Include="Exceptions\InvalidClusterException.cs" />
+    <Compile Include="Exceptions\InvalidHashException.cs" />
+    <Compile Include="Exceptions\InvalidSignatureException.cs" />
+    <Compile Include="Exceptions\MissingKeyException.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="FileIO.cs" />
     <Compile Include="FileSystem.cs" />

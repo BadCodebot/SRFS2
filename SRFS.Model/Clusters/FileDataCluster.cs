@@ -9,6 +9,11 @@ namespace SRFS.Model.Clusters {
     public class FileDataCluster : FileBaseCluster {
 
         // Public
+
+        public const int FileDataCluster_HeaderLength = FileBaseCluster_HeaderLength + HeaderLength;
+
+        public override byte[] Data => _plainTextData;
+
         #region Constructors
 
         public FileDataCluster(int address, int clusterSizeBytes, Guid volumeID, PublicKey encryptionKey, PrivateKey decryptionKey)
@@ -57,6 +62,11 @@ namespace SRFS.Model.Clusters {
 
         // Private
         #region Fields
+
+        private const int HeaderLength =
+            KeyThumbprint.Length +
+            PublicKey.Length +
+            PaddingLength;
 
         private const int KeyThumbprintOffset = 0;
         private const int KeyThumbprintLength = KeyThumbprint.Length;

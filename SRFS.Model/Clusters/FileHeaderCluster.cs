@@ -11,12 +11,14 @@ namespace SRFS.Model.Clusters {
         // Public
         #region Fields
 
+        public const int FileHeaderCluster_HeaderLength = FileBaseCluster_HeaderLength + HeaderLength;
+
         public const int MaximumNameLength = 255;
 
         #endregion
         #region Constructors
 
-        public FileHeaderCluster(int address, int clusterSizeBytes, Guid volumeID, PublicKey encryptionKey, PrivateKey decryptionKey) 
+        public FileHeaderCluster(int address, int clusterSizeBytes, Guid volumeID, PublicKey encryptionKey, PrivateKey decryptionKey)
             : base(address, clusterSizeBytes, volumeID, ClusterType.FileHeader) {
             if (clusterSizeBytes % 16 != 0) throw new ArgumentException();
 
@@ -31,6 +33,8 @@ namespace SRFS.Model.Clusters {
 
         #endregion
         #region Properties
+
+        public override byte[] Data => _plainTextData;
 
         public int ParentID {
             get {
@@ -98,6 +102,14 @@ namespace SRFS.Model.Clusters {
         // Private
         #region Fields
 
+        private const int HeaderLength =
+            sizeof(int) +
+            sizeof(byte) +
+            MaximumNameLength * sizeof(char) +
+            KeyThumbprint.Length +
+            PublicKey.Length +
+            PaddingLength;
+
         private const int ParentIDOffset = 0;
         private const int ParentIDLength = sizeof(int);
 
@@ -121,7 +133,7 @@ namespace SRFS.Model.Clusters {
 
         private int _parentID;
         private string _name;
-        
+
         private PublicKey _encryptionKey;
         private PrivateKey _decryptionKey;
 

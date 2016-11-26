@@ -74,6 +74,8 @@ namespace SRFS.Model.Clusters {
             }
         }
 
+        public abstract byte[] Data { get; }
+
         #endregion
         #region Methods
 
